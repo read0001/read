@@ -71,18 +71,26 @@ class Engine(val http: Http, private val sources: SourceRepo) {
 
     suspend fun web(key: String): WebBook? = sources.get(key)?.let(::web)
 
-    /** Emits each source's hits as soon as that source answers; slow or broken sources are dropped after [timeoutMs]. */
+    /**
+     * Emits each source's hits as soon as that source answers. A source is blocking code that cannot be interrupted, so
+     * the timeout works by walking away from it: the work carries on in [abandoned] while this search moves on and gives
+     * its slot to the next source. Without that, a few hung sites would use up every slot and stall the whole search.
+     */
     fun search(keyword: String, rows: List<SourceRow>, timeoutMs: Long = 25_000): Flow<List<SearchBook>> = channelFlow {
         val gate = Semaphore(6)
         rows.forEach { row ->
             launch(Dispatchers.IO) {
                 gate.withPermit {
-                    val hits = withTimeoutOrNull(timeoutMs) { runCatching { web(row)?.search(keyword) }.getOrNull() }
+                    val work = abandoned.async { runCatching { web(row)?.search(keyword) }.getOrNull() }
+                    val hits = withTimeoutOrNull(timeoutMs) { work.await() }
+                    if (hits == null) work.cancel()
                     if (!hits.isNullOrEmpty()) send(hits)
                 }
             }
         }
     }
+
+    private val abandoned = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.IO)
 
     suspend fun probe(row: SourceRow): ProbeResult = withContext(Dispatchers.IO) {
         val src = sources.parse(row) ?: return@withContext ProbeResult(row.key, row.name, false, "search", "书源无法解析", 0, 0, null, null, 0, 0)

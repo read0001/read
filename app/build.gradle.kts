@@ -19,8 +19,9 @@ android {
         applicationId = "app.openread"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        // Override with -PappVersionCode=… -PappVersionName=… (the update flow is tested with a newer build).
+        versionCode = (project.findProperty("appVersionCode") as String?)?.toInt() ?: 2
+        versionName = (project.findProperty("appVersionName") as String?) ?: "1.0.1"
         buildConfigField("String", "SUBSCRIPTION_REPO", "\"$subscriptionRepo\"")
         buildConfigField("String", "SUBSCRIPTION_BRANCH", "\"$subscriptionBranch\"")
     }

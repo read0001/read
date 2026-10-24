@@ -8,6 +8,7 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import app.openread.data.AppDb
+import app.openread.data.AppUpdate
 import app.openread.data.Engine
 import app.openread.data.Library
 import app.openread.data.Prefs
@@ -32,6 +33,7 @@ class AppContainer(app: Application) {
     val engine = Engine(http, sources)
     val library = Library(app, db, engine, sources)
     val subscription = SubscriptionUpdater(app, prefs, sources, http)
+    val appUpdate = AppUpdate(app, prefs, http)
 }
 
 class App : Application() {
@@ -41,6 +43,7 @@ class App : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        CrashReporter.install(this)
         container = AppContainer(this)
         scope.launch {
             container.subscription.seedIfEmpty()

@@ -3,6 +3,7 @@ package app.openread.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
@@ -98,4 +99,23 @@ fun BookRowItem(b: app.openread.engine.SearchBook, onClick: () -> Unit) {
             }
         }
     }
+}
+
+/** Shown after a crash: the trace can be copied and sent. */
+@Composable
+fun CrashDialog(report: String?, onDismiss: () -> Unit) {
+    if (report == null) return
+    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("上次异常退出") },
+        text = {
+            Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
+                Text("把下面的内容复制给开发者，就能定位问题。", style = MaterialTheme.typography.bodySmall)
+                Text(report, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 8.dp))
+            }
+        },
+        confirmButton = { androidx.compose.material3.TextButton(onClick = { clipboard.setText(androidx.compose.ui.text.AnnotatedString(report)); onDismiss() }) { Text("复制并关闭") } },
+        dismissButton = { androidx.compose.material3.TextButton(onClick = onDismiss) { Text("关闭") } },
+    )
 }

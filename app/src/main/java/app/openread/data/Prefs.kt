@@ -41,6 +41,8 @@ data class Settings(
     val autoSwitchSource: Boolean = true,
     val subscriptionBase: String = DEFAULT_BASE,
     val lastSubscriptionUpdate: Long = 0,
+    val ignoredVersion: Int = 0,
+    val lastUpdateCheck: Long = 0,
 ) {
     companion object {
         val DEFAULT_BASE = "https://raw.githubusercontent.com/${BuildConfig.SUBSCRIPTION_REPO}/${BuildConfig.SUBSCRIPTION_BRANCH}/booksource-check/out/"
@@ -60,6 +62,8 @@ class Prefs(private val context: Context) {
         val autoSwitch = booleanPreferencesKey("auto_switch")
         val base = stringPreferencesKey("sub_base")
         val updated = longPreferencesKey("sub_updated")
+        val ignored = intPreferencesKey("ignored_version")
+        val checked = longPreferencesKey("update_checked")
     }
 
     val flow: Flow<Settings> = context.store.data.map { p ->
@@ -76,6 +80,8 @@ class Prefs(private val context: Context) {
             autoSwitchSource = p[K.autoSwitch] ?: d.autoSwitchSource,
             subscriptionBase = p[K.base] ?: d.subscriptionBase,
             lastSubscriptionUpdate = p[K.updated] ?: 0,
+            ignoredVersion = p[K.ignored] ?: 0,
+            lastUpdateCheck = p[K.checked] ?: 0,
         )
     }
 
@@ -95,6 +101,8 @@ class Prefs(private val context: Context) {
             p[K.autoSwitch] = next.autoSwitchSource
             p[K.base] = next.subscriptionBase
             p[K.updated] = next.lastSubscriptionUpdate
+            p[K.ignored] = next.ignoredVersion
+            p[K.checked] = next.lastUpdateCheck
         }
     }
 }

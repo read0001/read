@@ -11,6 +11,13 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.lifecycleScope
 import app.openread.data.Settings
 import app.openread.ui.nav.AppNav
+import app.openread.ui.components.CrashDialog
+import app.openread.ui.update.LocalUpdates
+import app.openread.ui.update.UpdateHost
+import app.openread.ui.update.UpdateViewModel
+import androidx.activity.viewModels
+import androidx.compose.runtime.CompositionLocalProvider
+import app.openread.ui.components.factory
 import app.openread.ui.theme.OpenReadTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -19,13 +26,22 @@ import kotlinx.coroutines.withContext
 class MainActivity : ComponentActivity() {
     /** A `openread://search?q=…` link waiting for the UI to open the search page. */
     private val pendingSearch = androidx.compose.runtime.mutableStateOf<String?>(null)
+    private val lastCrash = androidx.compose.runtime.mutableStateOf<String?>(null)
+    private val updates: UpdateViewModel by viewModels { factory { UpdateViewModel(container) } }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        lastCrash.value = CrashReporter.take(application)
         setContent {
             val settings by container.prefs.flow.collectAsState(initial = Settings())
-            OpenReadTheme(settings.themeMode, settings.dynamicColor) { AppNav(pendingSearch.value) { pendingSearch.value = null } }
+            OpenReadTheme(settings.themeMode, settings.dynamicColor) {
+                CompositionLocalProvider(LocalUpdates provides updates) {
+                    AppNav(pendingSearch.value) { pendingSearch.value = null }
+                    UpdateHost(updates)
+                    CrashDialog(lastCrash.value) { lastCrash.value = null }
+                }
+            }
         }
         handleImport(intent)
     }

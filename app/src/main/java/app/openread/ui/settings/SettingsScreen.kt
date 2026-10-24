@@ -1,6 +1,7 @@
 package app.openread.ui.settings
 
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -37,6 +38,7 @@ import app.openread.BuildConfig
 import app.openread.container
 import app.openread.data.Settings
 import app.openread.data.ThemeMode
+import app.openread.ui.update.LocalUpdates
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -90,7 +92,13 @@ fun SettingsScreen() {
             }
             HorizontalDivider(Modifier.padding(top = 8.dp))
             Section("关于")
-            ListItem(headlineContent = { Text("开卷") }, supportingContent = { Text("版本 ${BuildConfig.VERSION_NAME} · 兼容 Legado（阅读）书源格式 · 内容均来自第三方书源") })
+            val updates = LocalUpdates.current
+            ListItem(
+                headlineContent = { Text("检查更新") },
+                supportingContent = { Text("当前版本 ${BuildConfig.VERSION_NAME}") },
+                modifier = Modifier.clickable { updates.check(manual = true) },
+            )
+            ListItem(headlineContent = { Text("开卷") }, supportingContent = { Text("兼容 Legado（阅读）书源格式 · 内容均来自第三方书源") })
         }
     }
 }

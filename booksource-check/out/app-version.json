@@ -1,0 +1,8 @@
+{
+  "versionCode": 2,
+  "versionName": "1.0.1",
+  "notes": "新增检查更新；修复搜索页可能闪退；修复顶部空白过多；搜索不再被卡住的书源拖住。",
+  "url": "https://raw.githubusercontent.com/read0001/read/main/releases/openread-1.0.1.apk",
+  "size": 2977950,
+  "sha256": "ddc89bac5a9755866fdd40ccf45854007e80859fe6e75af48a3075af2def0dda"
+}

@@ -42,6 +42,23 @@ https://raw.githubusercontent.com/read0001/read/main/booksource-check/out/bookso
 
 检测器会读环境变量 `HTTPS_PROXY`，加 `--no-proxy` 可忽略。结果取决于运行检测的网络：GitHub Actions 的机房 IP 经常被 Cloudflare 拦截，国内站点在海外网络上可能打不开，所以"可用"是"在检测机器上可用"。
 
+## 检查更新
+
+和 `../tv` 一样：订阅目录里放一个 `app-version.json`（`booksource-check/out/app-version.json`），App 启动时超过 12 小时检查一次，设置里「检查更新」可以手动查。发现新版本会弹窗（更新内容、大小），可以「立即更新 / 稍后 / 忽略此版本」；下载同样走多个 GitHub 镜像并显示进度，完成后调起系统安装（第一次需要允许“开卷”安装应用）。
+
+镜像不是可信来源，但不用担心被换成别的 App：Android 只会安装与已装版本同一签名密钥的更新。
+
+发布新版本：
+
+```bash
+# 1. 改 app/build.gradle.kts 里的 appVersionCode / appVersionName
+set -a; . ~/.config/openread/release.env; set +a      # 发布密钥，不在仓库里
+./gradlew :app:assembleRelease
+cp app/build/outputs/apk/release/app-release.apk releases/openread-<versionName>.apk
+python3 -I scripts/publish-release.py "更新内容"      # 生成 app-version.json（含大小和 sha256）
+git add -A && git commit -m "Release <versionName>" && git push
+```
+
 ## 项目结构
 
 | 目录 | 内容 |

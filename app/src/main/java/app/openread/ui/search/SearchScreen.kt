@@ -55,6 +55,7 @@ import app.openread.engine.SearchBook
 import app.openread.ui.components.BookCover
 import app.openread.ui.components.EmptyState
 import app.openread.ui.components.factory
+import androidx.compose.runtime.withFrameNanos
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -113,7 +114,12 @@ fun SearchScreen(initial: String?, onBack: () -> Unit, onOpen: (SearchBook) -> U
     val focus = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
-        if (!initial.isNullOrBlank()) vm.search(initial) else focus.requestFocus()
+        if (!initial.isNullOrBlank()) vm.search(initial)
+        else {
+            // The text field joins the tree a frame after this effect starts; asking too early throws.
+            withFrameNanos { }
+            runCatching { focus.requestFocus() }
+        }
     }
 
     Scaffold(
