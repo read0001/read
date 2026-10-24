@@ -127,6 +127,6 @@ object Mirrors {
             throw e
         }
         jobs.forEach { it.cancel() }
-        return winner ?: throw HttpException("下载失败（" + (if (lastCode > 0) "HTTP $lastCode" else "所有线路都连不上") + "）")
+        return winner ?: throw HttpException("下载失败（" + (if (lastCode > 0) "HTTP $lastCode" else "所有线路都连不上") + "）", code = lastCode)
     }
 }

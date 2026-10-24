@@ -14,10 +14,7 @@ import app.openread.ui.nav.AppNav
 import app.openread.ui.components.CrashDialog
 import app.openread.ui.update.LocalUpdates
 import app.openread.ui.update.UpdateHost
-import app.openread.ui.update.UpdateViewModel
-import androidx.activity.viewModels
 import androidx.compose.runtime.CompositionLocalProvider
-import app.openread.ui.components.factory
 import app.openread.ui.theme.OpenReadTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -27,7 +24,7 @@ class MainActivity : ComponentActivity() {
     /** A `openread://search?q=…` link waiting for the UI to open the search page. */
     private val pendingSearch = androidx.compose.runtime.mutableStateOf<String?>(null)
     private val lastCrash = androidx.compose.runtime.mutableStateOf<String?>(null)
-    private val updates: UpdateViewModel by viewModels { factory { UpdateViewModel(container) } }
+    private val updates get() = container.updates
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

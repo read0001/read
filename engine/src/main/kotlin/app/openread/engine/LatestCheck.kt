@@ -45,12 +45,14 @@ object LatestCheck {
             null -> return null
             false -> {}
         }
+        // One short chapter at the very end is a leave notice or an author's note, not a paywall: the one before it decides.
+        if (last - 1 > 14 && complete(last - 1) == true) return Result(real.size, true, title(last - 1), real.size - 1)
         var lo = 14      // read above as free
         var hi = last    // read just now as a teaser
         while (hi - lo > 1) {
             val mid = (lo + hi) / 2
             // A chapter that cannot be read says nothing: ask a neighbour instead of calling it padding.
-            val verdict = complete(mid) ?: complete(mid + 1).takeIf { mid + 1 < hi } ?: complete(mid - 1).takeIf { mid - 1 > lo } ?: return null
+            val verdict = complete(mid) ?: (if (mid + 1 < hi) complete(mid + 1) else null) ?: (if (mid - 1 > lo) complete(mid - 1) else null) ?: return null
             if (verdict) lo = mid else hi = mid
         }
         return Result(real.size, false, title(lo), lo + 1)

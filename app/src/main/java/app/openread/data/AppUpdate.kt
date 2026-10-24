@@ -106,7 +106,8 @@ class AppUpdate(private val context: Context, private val prefs: Prefs, private 
         val resp = try {
             Mirrors.openFirst(client, Mirrors.of(info.url), if (have > 0) mapOf("Range" to "bytes=$have-") else emptyMap())
         } catch (e: HttpException) {
-            part.delete() // a mirror that refuses the range (or a stale partial file): start over next attempt
+            // Only a refusal (416 and the like) makes the partial file useless; "no connection" must not throw away 80% of a download.
+            if (e.code in 400..499) part.delete()
             throw e
         }
         resp.use { r ->

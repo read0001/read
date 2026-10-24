@@ -98,10 +98,6 @@ fun main(args: Array<String>) {
         latestReport(args.drop(1), Http(proxy = proxyFromEnv(), timeoutSec = 15))
         exitProcess(0)
     }
-    if (args.firstOrNull() == "quality" && args.size >= 3) {
-        qualityReport(args.drop(1), Http(proxy = proxyFromEnv(), timeoutSec = 15))
-        exitProcess(0)
-    }
     if (args.firstOrNull() == "dump" && args.size >= 6) {
         dumpChapters(args.drop(1), Http(proxy = proxyFromEnv(), timeoutSec = 20))
         exitProcess(0)

@@ -20,8 +20,8 @@ android {
         minSdk = 26
         targetSdk = 35
         // Override with -PappVersionCode=… -PappVersionName=… (the update flow is tested with a newer build).
-        versionCode = (project.findProperty("appVersionCode") as String?)?.toInt() ?: 11
-        versionName = (project.findProperty("appVersionName") as String?) ?: "1.0.10"
+        versionCode = (project.findProperty("appVersionCode") as String?)?.toInt() ?: 12
+        versionName = (project.findProperty("appVersionName") as String?) ?: "1.0.11"
         buildConfigField("String", "SUBSCRIPTION_REPO", "\"$subscriptionRepo\"")
         buildConfigField("String", "SUBSCRIPTION_BRANCH", "\"$subscriptionBranch\"")
     }

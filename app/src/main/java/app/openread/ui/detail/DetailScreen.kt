@@ -65,6 +65,7 @@ import app.openread.engine.SearchBook
 import app.openread.ui.components.BookCover
 import app.openread.ui.components.factory
 import app.openread.ui.nav.Handoff
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -100,7 +101,10 @@ class DetailViewModel(private val c: AppContainer, private val bookUrl: String) 
 
     init { load() }
 
+    private var verifyJob: Job? = null
+
     fun load() {
+        verifyJob?.cancel()
         viewModelScope.launch {
             _state.value = DetailState()
             val row = c.library.book(bookUrl)
@@ -149,7 +153,9 @@ class DetailViewModel(private val c: AppContainer, private val bookUrl: String) 
      * is furthest on (at least three ahead of the current one). If none is better, the reader is told where the complete text ends.
      */
     private fun verifyLatest(current: SearchBook, others: List<SearchBook>) {
-        viewModelScope.launch {
+        verifyJob?.cancel()
+        val shown = _state.value.book?.bookUrl
+        verifyJob = viewModelScope.launch {
             _state.update { it.copy(checkingLatest = true, latestNote = null) }
             val mine = withTimeoutOrNull(90_000) { c.library.checkLatest(current) } ?: withTimeoutOrNull(90_000) { c.library.checkLatest(current) }
             if (mine == null || mine.complete) { _state.update { it.copy(checkingLatest = false) }; return@launch }
@@ -164,10 +170,15 @@ class DetailViewModel(private val c: AppContainer, private val bookUrl: String) 
             // Only a source whose newest chapter is itself complete is worth moving to; one padded at a later chapter is no better.
             val best = checked.filter { it.second?.complete == true }.maxWithOrNull(compareBy({ it.second!!.completeCount }, { if (it.second!!.complete) 1 else 0 }, { Freshness.of(it.first) }))
             val better = best?.takeIf { it.second!!.completeCount >= mine.completeCount + 3 }
+            // The reader may have switched source or reopened the page while this ran; then the verdict is about something else.
+            if (_state.value.book?.bookUrl != shown) { _state.update { it.copy(checkingLatest = false) }; return@launch }
             if (better != null && !_state.value.inShelf) {
                 _state.update { it.copy(checkingLatest = false) }
-                switchTo(better.first)
+                doSwitch(better.first)
                 _state.update { it.copy(message = "${current.originName} 的最新几章不完整，已换到 ${better.first.originName}（完整到「${better.second!!.completeTitle}」）") }
+            } else if (better != null) {
+                // On the shelf the source is not changed behind the reader's back.
+                _state.update { it.copy(checkingLatest = false, latestNote = "这个书源的最新章不完整（「${mine.completeTitle}」之后是别的小说混进来的内容）。${better.first.originName} 的最新章是完整的，到「${better.second!!.completeTitle}」，可以点右上角换源。") }
             } else {
                 _state.update {
                     it.copy(
@@ -214,6 +225,12 @@ class DetailViewModel(private val c: AppContainer, private val bookUrl: String) 
     fun switchToFresher() { _state.value.fresher?.let { switchTo(it) } }
 
     fun switchTo(target: SearchBook) {
+        verifyJob?.cancel() // the reader chose; a check that is still running must not undo it
+        _state.update { it.copy(checkingLatest = false) }
+        doSwitch(target)
+    }
+
+    private fun doSwitch(target: SearchBook) {
         viewModelScope.launch {
             _state.update { it.copy(alternatives = null, switching = true, fresher = null) }
             val b = _state.value.book ?: return@launch

@@ -117,6 +117,9 @@ class Engine(val http: Http, private val sources: SourceRepo, private val health
                                     if (hits.isNotEmpty()) {
                                         val ms = System.currentTimeMillis() - t0
                                         learned[row.key] = SourceHealth(row.key, 0, System.currentTimeMillis(), old?.lastFailAt ?: 0, old?.avgMs?.takeIf { it > 0 }?.let { (it * 2 + ms) / 3 } ?: ms)
+                                    } else if (old != null && old.failStreak > 0) {
+                                        // It answered, just not about this book: the failures are over, so the streak starts again.
+                                        learned[row.key] = old.copy(failStreak = 0)
                                     }
                                 }
                                 else -> learned[row.key] = SourceHealth(row.key, (old?.failStreak ?: 0) + 1, old?.lastOkAt ?: 0, System.currentTimeMillis(), old?.avgMs ?: 0)
@@ -141,7 +144,9 @@ class Engine(val http: Http, private val sources: SourceRepo, private val health
         }
     }
 
-    private val abandoned = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.IO)
+    /** Work that was given up on keeps running here; the cap keeps hung sites from taking every thread the reader and database need. */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private val abandoned = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.IO.limitedParallelism(48))
 
     suspend fun probe(row: SourceRow): ProbeResult = withContext(Dispatchers.IO) {
         val src = sources.parse(row) ?: return@withContext ProbeResult(row.key, row.name, false, "search", "书源无法解析", 0, 0, null, null, 0, 0)

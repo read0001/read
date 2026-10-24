@@ -1,6 +1,7 @@
 package app.openread
 
 import android.app.Application
+import android.os.Bundle
 import androidx.room.Room
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -37,6 +38,7 @@ class AppContainer(app: Application) {
     val subscription = SubscriptionUpdater(app, prefs, sources, http)
     val appUpdate = AppUpdate(app, prefs, http)
     /** Outlives the activity, so a download keeps going (and the dialog comes back) when the app is left and reopened. */
+    @Volatile var inForeground = false
     val updates = UpdateController(this, app)
 }
 
@@ -55,6 +57,16 @@ class App : Application() {
             if (container.subscription.isStale()) container.subscription.update()
         }
         scheduleSubscriptionRefresh()
+        registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
+            private var started = 0
+            override fun onActivityStarted(activity: android.app.Activity) { started++; container.inForeground = true }
+            override fun onActivityStopped(activity: android.app.Activity) { started--; container.inForeground = started > 0 }
+            override fun onActivityCreated(activity: android.app.Activity, savedInstanceState: Bundle?) {}
+            override fun onActivityResumed(activity: android.app.Activity) {}
+            override fun onActivityPaused(activity: android.app.Activity) {}
+            override fun onActivitySaveInstanceState(activity: android.app.Activity, outState: Bundle) {}
+            override fun onActivityDestroyed(activity: android.app.Activity) {}
+        })
     }
 
     /** Every 12 hours, on any network, swap in the latest verified sources even if the app is never opened. */

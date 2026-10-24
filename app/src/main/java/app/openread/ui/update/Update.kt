@@ -27,8 +27,6 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import app.openread.AppContainer
 import app.openread.data.AppUpdate
 import kotlinx.coroutines.CancellationException
@@ -75,7 +73,7 @@ class UpdateController(private val c: AppContainer, private val app: Application
         }
     }
 
-    fun download(info: Info) {
+    fun download(info: AppUpdate.Info) {
         job?.cancel()
         job = c.appScope.launch {
             _state.value = UpdateState.Downloading(info, 0, 0)
@@ -89,13 +87,14 @@ class UpdateController(private val c: AppContainer, private val app: Application
             }.onSuccess { file -> finished(info, file) }
                 .onFailure { e ->
                     _state.value = if (e is CancellationException) UpdateState.Idle
-                    else UpdateState.Notice("下载失败：${e.message ?: e.javaClass.simpleName}。再点一次“立即更新”会从已下载的部分继续。")
+                    else UpdateState.Notice((e.message?.takeIf { it.startsWith("下载失败") } ?: "下载失败：${e.message ?: e.javaClass.simpleName}") + "。再点一次“立即更新”会从已下载的部分继续。")
                 }
         }
     }
 
-    private fun finished(info: Info, file: File) {
-        val background = (_state.value as? UpdateState.Downloading)?.background == true
+    private fun finished(info: AppUpdate.Info, file: File) {
+        // The installer cannot be started from the background (Android blocks it), so then the reader is told instead.
+        val background = (_state.value as? UpdateState.Downloading)?.background == true || !c.inForeground
         if (background) {
             _state.value = UpdateState.Ready(info, file)
             UpdateNotifier.downloaded(app, info.name)
@@ -127,27 +126,11 @@ class UpdateController(private val c: AppContainer, private val app: Application
     fun dismiss() { job?.cancel(); pending = null; _state.value = UpdateState.Idle }
 }
 
-private typealias Info = AppUpdate.Info
 
-/** Thin ViewModel so the activity can hold the controller; the state itself is the process-wide one. */
-class UpdateViewModel(private val c: AppContainer) : ViewModel() {
-    private val u get() = c.updates
-    val state: StateFlow<UpdateState> get() = u.state
-    fun checkOnLaunch() = u.checkOnLaunch()
-    fun check(manual: Boolean) = u.check(manual)
-    fun download(info: AppUpdate.Info) = u.download(info)
-    fun toBackground() = u.toBackground()
-    fun install(file: File) = u.install(file)
-    fun onResume() = u.onResume()
-    fun openInstallSettings() = u.openInstallSettings()
-    fun ignore(info: AppUpdate.Info) = u.ignore(info)
-    fun dismiss() = u.dismiss()
-}
-
-val LocalUpdates = compositionLocalOf<UpdateViewModel> { error("UpdateViewModel not provided") }
+val LocalUpdates = compositionLocalOf<UpdateController> { error("UpdateController not provided") }
 
 @Composable
-fun UpdateHost(vm: UpdateViewModel) {
+fun UpdateHost(vm: UpdateController) {
     val state by vm.state.collectAsState()
     LaunchedEffect(Unit) { vm.checkOnLaunch() }
     val askNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
