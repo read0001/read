@@ -8,6 +8,7 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import app.openread.data.AppDb
+import app.openread.ui.update.UpdateController
 import app.openread.data.AppUpdate
 import app.openread.data.Engine
 import app.openread.data.Library
@@ -34,6 +35,8 @@ class AppContainer(app: Application) {
     val library = Library(app, db, engine, sources)
     val subscription = SubscriptionUpdater(app, prefs, sources, http)
     val appUpdate = AppUpdate(app, prefs, http)
+    /** Outlives the activity, so a download keeps going (and the dialog comes back) when the app is left and reopened. */
+    val updates = UpdateController(this, app)
 }
 
 class App : Application() {

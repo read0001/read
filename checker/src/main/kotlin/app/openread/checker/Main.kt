@@ -80,7 +80,7 @@ private fun host(src: BookSource): String =
 /** What the engine cannot do at all; testing these only burns time. */
 private val unsupported = listOf("java.webView(", "java.startBrowser", "java.getVerificationCode", "java.openUrl(")
 
-private fun usable(src: BookSource, blocklist: List<String>): String? {
+internal fun usable(src: BookSource, blocklist: List<String>): String? {
     val text = "${src.bookSourceName} ${src.bookSourceGroup} ${src.bookSourceComment} ${src.key}".lowercase()
     if (blocklist.any { text.contains(it) }) return "blocklisted"
     if (!src.enabled) return "disabled"
@@ -94,6 +94,10 @@ private fun usable(src: BookSource, blocklist: List<String>): String? {
 }
 
 fun main(args: Array<String>) {
+    if (args.firstOrNull() == "quality" && args.size >= 3) {
+        qualityReport(args.drop(1), Http(proxy = proxyFromEnv(), timeoutSec = 15))
+        exitProcess(0)
+    }
     if (args.firstOrNull() == "dump" && args.size >= 6) {
         dumpChapters(args.drop(1), Http(proxy = proxyFromEnv(), timeoutSec = 20))
         exitProcess(0)

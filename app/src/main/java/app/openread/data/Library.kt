@@ -81,7 +81,7 @@ class Engine(val http: Http, private val sources: SourceRepo) {
      * its slot to the next source. Without that, a few hung sites would use up every slot and stall the whole search.
      */
     fun search(keyword: String, rows: List<SourceRow>, timeoutMs: Long = 25_000): Flow<List<SearchBook>> = channelFlow {
-        val gate = Semaphore(6)
+        val gate = Semaphore(16)
         rows.forEach { row ->
             launch(Dispatchers.IO) {
                 gate.withPermit {

@@ -1,8 +1,8 @@
 {
-  "versionCode": 8,
-  "versionName": "1.0.7",
-  "notes": "修复最新章节：付费章节后面混入别的小说的句子会被隐藏（并说明）；目录里最新章节块排到末尾、重复章节去掉；搜索结果按最新章节排序，更新慢的书源会提示换源。",
-  "url": "https://raw.githubusercontent.com/read0001/read/main/releases/openread-1.0.7.apk",
-  "size": 3014538,
-  "sha256": "b708d5205260a7a01e0f575595c12e8881344ae6f0b9b7e645d7c9ad75213ae3"
+  "versionCode": 9,
+  "versionName": "1.0.8",
+  "notes": "书源从 53 个扩到 348 个（来自 150 多个仓库全量检测），新增能读到《剑烛大荒》第 83 章完整正文的书海阁；下载更新支持断点续传和后台下载，完成后通知；更新弹窗按钮排成一行。",
+  "url": "https://raw.githubusercontent.com/read0001/read/main/releases/openread-1.0.8.apk",
+  "size": 3211598,
+  "sha256": "b5eaa8bc6de249a9f5f19b59eef7b42999b1d045e983c653c4eb1edb6af3a9be"
 }

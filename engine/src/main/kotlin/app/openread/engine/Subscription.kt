@@ -102,8 +102,8 @@ object Mirrors {
      * For a download: every mirror is asked at once and the first to answer with a file wins; the other requests are
      * cancelled, so the bytes come from the fastest line. The caller reads and closes the response.
      */
-    suspend fun openFirst(client: okhttp3.OkHttpClient, urls: List<String>): okhttp3.Response {
-        val calls = urls.map { client.newCall(okhttp3.Request.Builder().url(it).build()) }
+    suspend fun openFirst(client: okhttp3.OkHttpClient, urls: List<String>, headers: Map<String, String> = emptyMap()): okhttp3.Response {
+        val calls = urls.map { client.newCall(okhttp3.Request.Builder().url(it).apply { headers.forEach { (k, v) -> header(k, v) } }.build()) }
         val answers = Channel<Pair<okhttp3.Call, okhttp3.Response?>>(calls.size)
         val jobs = calls.map { call -> scope.launch { answers.send(call to runCatching { call.execute() }.getOrNull()) } }
         var winner: okhttp3.Response? = null

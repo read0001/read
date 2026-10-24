@@ -9,6 +9,8 @@ import app.openread.BuildConfig
 import app.openread.engine.Http
 import app.openread.engine.JsonCodec
 import app.openread.engine.Mirrors
+import app.openread.engine.HttpException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
@@ -67,44 +69,84 @@ class AppUpdate(private val context: Context, private val prefs: Prefs, private 
         )
     }
 
-    /** Downloads the APK from whichever mirror answers first. [onProgress] gets (bytes so far, total or 0). */
+    /**
+     * Downloads the APK from whichever mirror answers first. Bytes already on disk are kept: a dropped connection is retried
+     * with a `Range` request, and so is a later attempt after the user cancelled or the process was killed. [onProgress]
+     * gets (bytes so far, total or 0).
+     */
     suspend fun download(info: Info, onProgress: (Long, Long) -> Unit): File = withContext(Dispatchers.IO) {
-        val dir = File(context.cacheDir, "updates").apply { mkdirs(); listFiles()?.forEach { it.delete() } }
+        val dir = File(context.cacheDir, "updates").apply { mkdirs() }
         val out = File(dir, "openread-${info.code}.apk")
+        val part = File(dir, "openread-${info.code}.apk.part")
+        dir.listFiles()?.forEach { if (it != part && it != out) it.delete() }
+        if (out.exists()) { if (isComplete(out, info)) return@withContext out else out.delete() }
         // The shared client has a short whole-call limit; an APK on a slow link needs longer, as long as bytes keep coming.
         val client = http.client.newBuilder().callTimeout(0, TimeUnit.SECONDS).readTimeout(30, TimeUnit.SECONDS).build()
-        try {
-            Mirrors.openFirst(client, Mirrors.of(info.url)).use { resp ->
-                val total = resp.body.contentLength().takeIf { it > 0 } ?: info.size
-                val digest = MessageDigest.getInstance("SHA-256")
-                var done = 0L
-                resp.body.byteStream().use { input ->
-                    out.outputStream().use { o ->
-                        val buf = ByteArray(64 * 1024)
-                        while (true) {
-                            coroutineContext.ensureActive()
-                            val n = input.read(buf)
-                            if (n < 0) break
-                            o.write(buf, 0, n)
-                            digest.update(buf, 0, n)
-                            done += n
-                            onProgress(done, total)
-                        }
-                    }
-                }
-                val hex = digest.digest().joinToString("") { "%02x".format(it) }
-                if (info.sha256 != null && hex != info.sha256) error("校验失败：下载的文件和发布信息对不上，已丢弃")
-                if (out.length() < 100_000) error("文件不完整")
+        var failure: Exception? = null
+        for (attempt in 1..MAX_ATTEMPTS) {
+            coroutineContext.ensureActive()
+            try {
+                fetchInto(client, info, part, onProgress)
+                if (!isComplete(part, info)) { part.delete(); error("校验失败：下载的文件和发布信息对不上，已丢弃") }
+                check(part.renameTo(out)) { "无法保存下载的文件" }
+                return@withContext out
+            } catch (e: CancellationException) {
+                throw e // the partial file stays for the next try
+            } catch (e: Exception) {
+                failure = e
+                if (e is IllegalStateException) throw e
+                kotlinx.coroutines.delay(1500L * attempt)
             }
-        } catch (e: Throwable) {
-            out.delete()
+        }
+        throw failure ?: IllegalStateException("下载失败")
+    }
+
+    private suspend fun fetchInto(client: okhttp3.OkHttpClient, info: Info, part: File, onProgress: (Long, Long) -> Unit) {
+        val have = part.length()
+        val resp = try {
+            Mirrors.openFirst(client, Mirrors.of(info.url), if (have > 0) mapOf("Range" to "bytes=$have-") else emptyMap())
+        } catch (e: HttpException) {
+            part.delete() // a mirror that refuses the range (or a stale partial file): start over next attempt
             throw e
         }
-        out
+        resp.use { r ->
+            val resumed = have > 0 && r.code == 206 && r.header("Content-Range")?.trim()?.startsWith("bytes $have-") == true
+            if (!resumed) part.delete()
+            val offset = if (resumed) have else 0L
+            val total = (r.body.contentLength().takeIf { it > 0 }?.plus(offset)) ?: info.size
+            var done = offset
+            r.body.byteStream().use { input ->
+                java.io.FileOutputStream(part, resumed).use { o ->
+                    val buf = ByteArray(64 * 1024)
+                    while (true) {
+                        coroutineContext.ensureActive()
+                        val n = input.read(buf)
+                        if (n < 0) break
+                        o.write(buf, 0, n)
+                        done += n
+                        onProgress(done, total)
+                    }
+                }
+            }
+            if (total > 0 && done < total) throw java.io.IOException("下载中断")
+        }
+    }
+
+    private fun isComplete(file: File, info: Info): Boolean {
+        if (file.length() < 100_000) return false
+        if (info.size > 0 && file.length() != info.size) return false
+        val want = info.sha256 ?: return true
+        val digest = MessageDigest.getInstance("SHA-256")
+        file.inputStream().use { input ->
+            val buf = ByteArray(64 * 1024)
+            while (true) { val n = input.read(buf); if (n < 0) break; digest.update(buf, 0, n) }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) } == want
     }
 
     companion object {
         const val CHECK_EVERY_MS = 12 * 3600_000L
+        private const val MAX_ATTEMPTS = 4
 
         fun canInstall(context: Context) = context.packageManager.canRequestPackageInstalls()
 
