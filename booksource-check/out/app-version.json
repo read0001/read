@@ -1,8 +1,8 @@
 {
-  "versionCode": 3,
-  "versionName": "1.0.2",
-  "notes": "退出需要连按两次返回键（在书架页按一次会提示，2 秒内再按才退出）；其他标签页按返回先回到书架。",
-  "url": "https://raw.githubusercontent.com/read0001/read/main/releases/openread-1.0.2.apk",
+  "versionCode": 4,
+  "versionName": "1.0.3",
+  "notes": "检查更新和下载改为同时向多个镜像请求：检查取版本号最高的一份，下载用最快的线路，不再逐个镜像等超时。",
+  "url": "https://raw.githubusercontent.com/read0001/read/main/releases/openread-1.0.3.apk",
   "size": 2977950,
-  "sha256": "e231e40caf3360d79e6492b276412dd730e81732d18d3da268505a1a8a1111bc"
+  "sha256": "54f30058aec3c73ba39ee912bc357668c7591b68fdfd2db5d60b92764df1267c"
 }

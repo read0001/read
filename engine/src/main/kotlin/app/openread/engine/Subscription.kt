@@ -58,4 +58,75 @@ object Mirrors {
         jobs.forEach { it.cancel() }
         return chosen ?: throw (failure ?: HttpException("没有可用的镜像"))
     }
+
+    /** What came back from asking several addresses for the same file. */
+    class Answers(val bodies: List<String>, val error: String?)
+
+    /**
+     * Asks every mirror at once and keeps every usable answer: waits for the first one, then at most a short grace period
+     * for the rest. Mirrors differ in how long they keep an old copy, so the caller picks the newest (a version manifest
+     * from a stale mirror must not hide a release). A 404 means "that mirror has no such file" and is not an error.
+     */
+    suspend fun fetchAll(http: Http, url: String, valid: (String) -> Boolean = { it.isNotBlank() }): Answers = fetchAllFrom(http, of(url), valid)
+
+    suspend fun fetchAllFrom(http: Http, urls: List<String>, valid: (String) -> Boolean = { it.isNotBlank() }): Answers {
+        val answers = Channel<Pair<String?, String?>>(urls.size)
+        val jobs = urls.map { u ->
+            scope.launch {
+                val r = runCatching { http.execute(u, retry = 0) }
+                val resp = r.getOrNull()
+                answers.send(
+                    when {
+                        resp == null -> null to (r.exceptionOrNull()?.message ?: "连接失败")
+                        resp.code == 404 -> null to null
+                        resp.code != 200 -> null to "HTTP ${resp.code}"
+                        !valid(resp.body) -> null to "内容格式不对"
+                        else -> resp.body to null
+                    },
+                )
+            }
+        }
+        val good = ArrayList<String>()
+        var error: String? = null
+        var answered = 0
+        while (answered < urls.size) {
+            val (body, e) = if (good.isEmpty()) answers.receive() else (withTimeoutOrNull(GRACE_MS) { answers.receive() } ?: break)
+            answered++
+            if (body != null) good.add(body) else error = error ?: e
+        }
+        jobs.forEach { it.cancel() }
+        return Answers(good, error)
+    }
+
+    /**
+     * For a download: every mirror is asked at once and the first to answer with a file wins; the other requests are
+     * cancelled, so the bytes come from the fastest line. The caller reads and closes the response.
+     */
+    suspend fun openFirst(client: okhttp3.OkHttpClient, urls: List<String>): okhttp3.Response {
+        val calls = urls.map { client.newCall(okhttp3.Request.Builder().url(it).build()) }
+        val answers = Channel<Pair<okhttp3.Call, okhttp3.Response?>>(calls.size)
+        val jobs = calls.map { call -> scope.launch { answers.send(call to runCatching { call.execute() }.getOrNull()) } }
+        var winner: okhttp3.Response? = null
+        var lastCode = 0
+        try {
+            repeat(calls.size) {
+                val (call, r) = answers.receive()
+                if (r == null) return@repeat
+                if (winner == null && r.isSuccessful) {
+                    winner = r
+                    calls.forEach { other -> if (other !== call) other.cancel() }
+                } else {
+                    lastCode = r.code
+                    r.close()
+                }
+            }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            // The download was abandoned: stop every request, including a winner nobody will read.
+            calls.forEach { it.cancel() }
+            winner?.close()
+            throw e
+        }
+        jobs.forEach { it.cancel() }
+        return winner ?: throw HttpException("下载失败（" + (if (lastCode > 0) "HTTP $lastCode" else "所有线路都连不上") + "）")
+    }
 }

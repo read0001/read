@@ -141,4 +141,42 @@ class RuleEngineTest {
         assertEquals("我 < 你，你 > 我", HtmlFormatter.format("我 < 你，你 > 我"))
         assertEquals("a\nb", HtmlFormatter.format("a<br>b"))
     }
+
+    private fun server(vararg routes: Pair<String, String>, delayMs: Long = 0): com.sun.net.httpserver.HttpServer {
+        val srv = com.sun.net.httpserver.HttpServer.create(java.net.InetSocketAddress("127.0.0.1", 0), 0)
+        routes.forEach { (path, body) ->
+            srv.createContext(path) { ex ->
+                if (delayMs > 0) Thread.sleep(delayMs)
+                val b = body.toByteArray(); ex.sendResponseHeaders(200, b.size.toLong()); ex.responseBody.use { it.write(b) }
+            }
+        }
+        srv.start()
+        return srv
+    }
+
+    @Test fun updateCheckSeesEveryMirrorAndTheCallerPicksTheNewest() {
+        val stale = server("/v.json" to """{"versionCode":2}""")
+        val fresh = server("/v.json" to """{"versionCode":5}""", delayMs = 400)   // answers later, but is the newer copy
+        val missing = server()                                                       // 404: has no such file
+        try {
+            fun url(s: com.sun.net.httpserver.HttpServer) = "http://127.0.0.1:${s.address.port}/v.json"
+            val a = kotlinx.coroutines.runBlocking { Mirrors.fetchAllFrom(http, listOf(url(stale), url(fresh), url(missing))) { it.contains("versionCode") } }
+            val newest = a.bodies.maxOf { Regex("""versionCode":(\d+)""").find(it)!!.groupValues[1].toInt() }
+            assertEquals(5, newest, "a stale mirror that answers first must not hide the newer release")
+            assertEquals(null, a.error, "404 on one mirror is not an error")
+        } finally { stale.stop(0); fresh.stop(0); missing.stop(0) }
+    }
+
+    @Test fun downloadComesFromTheFastestMirrorAndSkipsDeadOnes() {
+        val slow = server("/a.apk" to "SLOW", delayMs = 1500)
+        val fast = server("/a.apk" to "FAST")
+        val dead = java.net.ServerSocket(0).use { it.localPort }                      // nothing listens here
+        try {
+            val urls = listOf("http://127.0.0.1:$dead/a.apk", "http://127.0.0.1:${slow.address.port}/a.apk", "http://127.0.0.1:${fast.address.port}/a.apk")
+            val t0 = System.nanoTime()
+            val body = kotlinx.coroutines.runBlocking { Mirrors.openFirst(http.client, urls).use { it.body.string() } }
+            assertEquals("FAST", body)
+            assertTrue((System.nanoTime() - t0) / 1_000_000 < 1200, "must not wait for the slow or dead mirror")
+        } finally { slow.stop(0); fast.stop(0) }
+    }
 }
