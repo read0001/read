@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.FormatListBulleted
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
@@ -174,6 +175,7 @@ fun DetailScreen(bookUrl: String, onBack: () -> Unit, onRead: (String, Int?) -> 
     val s by vm.state.collectAsState()
     val snack = remember { SnackbarHostState() }
     var showToc by remember { mutableStateOf(false) }
+    var showComments by remember { mutableStateOf(false) }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
 
     LaunchedEffect(s.message) { s.message?.let { snack.showSnackbar(it); vm.consumeMessage() } }
@@ -239,10 +241,20 @@ fun DetailScreen(bookUrl: String, onBack: () -> Unit, onRead: (String, Int?) -> 
                             modifier = Modifier.padding(top = 12.dp).clickable(enabled = s.chapters.isNotEmpty()) { showToc = true },
                         )
                     }
+                    item {
+                        ListItem(
+                            headlineContent = { Text("书评") },
+                            supportingContent = { Text("来自豆瓣读书的短评和长评") },
+                            trailingContent = { Icon(Icons.Outlined.ChatBubbleOutline, null) },
+                            modifier = Modifier.clickable { showComments = true },
+                        )
+                    }
                 }
             }
         }
     }
+
+    if (showComments) s.book?.let { CommentsSheet(it.name, it.author, onDismiss = { showComments = false }) }
 
     if (showToc) TocSheet(s.chapters, current = s.readIndex, onDismiss = { showToc = false }) { idx ->
         showToc = false

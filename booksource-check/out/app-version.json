@@ -1,8 +1,8 @@
 {
-  "versionCode": 4,
-  "versionName": "1.0.3",
-  "notes": "检查更新和下载改为同时向多个镜像请求：检查取版本号最高的一份，下载用最快的线路，不再逐个镜像等超时。",
-  "url": "https://raw.githubusercontent.com/read0001/read/main/releases/openread-1.0.3.apk",
-  "size": 2977950,
-  "sha256": "54f30058aec3c73ba39ee912bc357668c7591b68fdfd2db5d60b92764df1267c"
+  "versionCode": 5,
+  "versionName": "1.0.4",
+  "notes": "新增书评：详情页可看豆瓣读书上这本书的评分、短评和长评。",
+  "url": "https://raw.githubusercontent.com/read0001/read/main/releases/openread-1.0.4.apk",
+  "size": 2994334,
+  "sha256": "3701840f2c9a5788b4e5f9945fe021b70da90b7cd35f20847c49b7149a2fad49"
 }

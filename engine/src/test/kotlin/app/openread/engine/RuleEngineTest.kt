@@ -179,4 +179,32 @@ class RuleEngineTest {
             assertTrue((System.nanoTime() - t0) / 1_000_000 < 1200, "must not wait for the slow or dead mirror")
         } finally { slow.stop(0); fast.stop(0) }
     }
+
+    private fun fixture(name: String) = checkNotNull(javaClass.getResource("/douban/$name")) { name }.readText()
+
+    @Test fun doubanSearchPicksTheNovelNotAVolumeOrASeries() {
+        val subjects = Douban.parseSearch(fixture("search.html"))
+        assertTrue(subjects.none { it.title.contains("丛书") }, "a series has no /subject/ page")
+        val hit = Douban.pick(subjects, "斗破苍穹", "天蚕土豆_qd22")
+        assertEquals("22933018", hit?.id)
+        assertTrue((hit?.ratingCount ?: 0) > 1000)
+        assertEquals(null, Douban.pick(subjects, "斗破苍穹", "某个不相干的作者"), "wrong author: show nothing rather than another book's comments")
+        assertEquals(null, Douban.pick(subjects, "完全不存在的书名", ""))
+    }
+
+    @Test fun doubanShortCommentsAndReviewsParse() {
+        val page = Douban.parseInterests(fixture("interests.json"))
+        assertTrue(page.total > 1000)
+        assertEquals(3, page.items.size)
+        assertTrue(page.items.all { it.text.isNotBlank() && it.user.startsWith("读者") && it.time.length == 10 })
+        assertTrue(page.items.first().stars in 1..5)
+        val reviews = Douban.parseReviews(fixture("reviews.json"))
+        assertEquals(2, reviews.items.size)
+        assertTrue(reviews.items.all { !it.title.isNullOrBlank() && it.url?.startsWith("https://book.douban.com/review/") == true })
+    }
+
+    @Test fun doubanLoginWallIsAReadableError() {
+        val e = runCatching { Douban.parseInterests("""{"request":"GET /v2/book/1/interests","msg":"need_permission","code":1000}""") }.exceptionOrNull()
+        assertTrue(e is DoubanException && e.message!!.contains("登录"))
+    }
 }
