@@ -1,6 +1,13 @@
 package app.openread.ui.nav
 
+import android.app.Activity
 import android.net.Uri
+import android.os.SystemClock
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -95,6 +102,17 @@ private fun MainTabs(
     onOpenHit: (app.openread.engine.SearchBook) -> Unit,
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    val context = LocalContext.current
+    var lastBack by remember { mutableLongStateOf(0L) }
+    // Back on another tab returns to the shelf; on the shelf it takes two presses within 2 seconds to leave.
+    BackHandler {
+        if (tab != 0) tab = 0
+        else {
+            val now = SystemClock.elapsedRealtime()
+            if (now - lastBack < 2000) (context as? Activity)?.finish()
+            else { lastBack = now; Toast.makeText(context, "再按一次退出", Toast.LENGTH_SHORT).show() }
+        }
+    }
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
