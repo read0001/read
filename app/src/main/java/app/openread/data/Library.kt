@@ -19,7 +19,9 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -257,11 +259,14 @@ class SubscriptionUpdater(private val context: Context, private val prefs: Prefs
     suspend fun isStale(): Boolean = System.currentTimeMillis() - prefs.current().lastSubscriptionUpdate > STALE_MS
 
     /** Put the bundled list in place on first launch so the app is usable offline. */
-    suspend fun seedIfEmpty() {
-        if (sources.count() > 0) return
+    suspend fun seedIfEmpty() = seedLock.withLock {
+        // App start-up and the first search both call this; the second must wait for the first to commit, not race it.
+        if (sources.count() > 0) return@withLock
         val text = context.assets.open("booksources.json").bufferedReader().use { it.readText() }
         sources.replaceSubscribed(BookSource.parseList(text))
     }
+
+    private val seedLock = kotlinx.coroutines.sync.Mutex()
 
     suspend fun update(): Outcome = withContext(Dispatchers.IO) {
         val base = prefs.current().subscriptionBase.trim().let { if (it.endsWith("/")) it else "$it/" }

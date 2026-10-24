@@ -61,11 +61,11 @@ fun AppNav(pendingSearch: String? = null, onSearchHandled: () -> Unit = {}) {
                 onOpen = { nav.navigate(Route.reader(it.bookUrl)) },
                 onDetail = { nav.navigate(Route.detail(it.bookUrl)) },
                 onSearch = { nav.navigate(Route.search()) },
-                onOpenHit = { Handoff.search = it; nav.navigate(Route.detail(it.bookUrl)) },
+                onOpenHit = { Handoff.search = it; Handoff.alternates = emptyList(); nav.navigate(Route.detail(it.bookUrl)) },
             )
         }
         composable(Route.SEARCH, arguments = listOf(navArgument("q") { type = NavType.StringType; nullable = true; defaultValue = null })) { e ->
-            SearchScreen(e.arguments?.getString("q"), onBack = { nav.popBackStack() }, onOpen = { Handoff.search = it; nav.navigate(Route.detail(it.bookUrl)) })
+            SearchScreen(e.arguments?.getString("q"), onBack = { nav.popBackStack() }, onOpen = { hit, others -> Handoff.search = hit; Handoff.alternates = others; nav.navigate(Route.detail(hit.bookUrl)) })
         }
         composable(Route.DETAIL, arguments = listOf(navArgument("url") { type = NavType.StringType })) { e ->
             val url = e.arguments?.getString("url").orEmpty()

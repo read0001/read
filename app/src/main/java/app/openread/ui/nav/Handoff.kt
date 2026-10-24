@@ -8,4 +8,7 @@ import app.openread.engine.SearchBook
  */
 object Handoff {
     @Volatile var search: SearchBook? = null
+
+    /** The same book as found in other sources, tried in order when [search] cannot be opened. */
+    @Volatile var alternates: List<SearchBook> = emptyList()
 }

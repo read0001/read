@@ -98,7 +98,7 @@ class DetailViewModel(private val c: AppContainer, private val bookUrl: String) 
             val hit = Handoff.search?.takeIf { it.bookUrl == bookUrl }
             if (hit == null) { _state.value = DetailState(loading = false, error = "找不到这本书的来源，请重新搜索"); return@launch }
             origin = hit
-            open(hit)
+            openWithFallback(hit, Handoff.alternates)
         }
     }
 
@@ -106,6 +106,25 @@ class DetailViewModel(private val c: AppContainer, private val bookUrl: String) 
         runCatching { c.library.open(hit) }
             .onSuccess { (b, ch) -> _state.update { it.copy(loading = false, error = null, book = b, chapters = ch, switching = false) } }
             .onFailure { e -> _state.update { it.copy(loading = false, switching = false, error = "${hit.originName}：${e.message ?: "打开失败"}") } }
+    }
+
+    /**
+     * Opens [hit]; if that source is down, the same book from the next source in [alternates] is tried (up to five in all),
+     * so one broken site among many does not leave the reader on an error page.
+     */
+    private suspend fun openWithFallback(hit: SearchBook, alternates: List<SearchBook>) {
+        val candidates = listOf(hit) + alternates.take(4)
+        var firstError: String? = null
+        for ((i, cand) in candidates.withIndex()) {
+            val r = runCatching { c.library.open(cand) }
+            val ok = r.getOrNull()?.takeIf { it.second.isNotEmpty() }
+            if (ok != null) {
+                _state.update { it.copy(loading = false, error = null, book = ok.first, chapters = ok.second, switching = false, message = if (i > 0) "${hit.originName} 打不开，已换到 ${cand.originName}" else null) }
+                return
+            }
+            firstError = firstError ?: "${cand.originName}：${r.exceptionOrNull()?.message ?: "目录为空"}"
+        }
+        _state.update { it.copy(loading = false, switching = false, error = firstError ?: "打开失败") }
     }
 
     /** Puts the book on the shelf (if it is not already) and returns its key. */

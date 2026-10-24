@@ -105,7 +105,7 @@ class SearchViewModel(private val c: AppContainer) : ViewModel() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SearchScreen(initial: String?, onBack: () -> Unit, onOpen: (SearchBook) -> Unit) {
+fun SearchScreen(initial: String?, onBack: () -> Unit, onOpen: (SearchBook, List<SearchBook>) -> Unit) {
     val ctx = LocalContext.current
     val vm: SearchViewModel = viewModel(factory = factory { SearchViewModel(ctx.container) })
     val state by vm.state.collectAsState()
@@ -155,7 +155,7 @@ fun SearchScreen(initial: String?, onBack: () -> Unit, onOpen: (SearchBook) -> U
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                         )
                     }
-                    items(state.groups, key = { it.name + "\u0000" + it.author }) { g -> ResultRow(g) { onOpen(g.first) } }
+                    items(state.groups, key = { it.name + "\u0000" + it.author }) { g -> ResultRow(g) { onOpen(g.first, g.hits.drop(1)) } }
                 }
             }
         }

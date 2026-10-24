@@ -1,8 +1,8 @@
 {
-  "versionCode": 6,
-  "versionName": "1.0.5",
-  "notes": "修复最新章节：目录只取到前几页、最新章节排在最前面、最新一章正文后面混入目录页内容；剔除目录不完整的书源。",
-  "url": "https://raw.githubusercontent.com/read0001/read/main/releases/openread-1.0.5.apk",
-  "size": 2998150,
-  "sha256": "fcce440d8c3afdcb8d1171f1eb98e59e14405f0fb9278b8dd123d4fb145f6a2b"
+  "versionCode": 7,
+  "versionName": "1.0.6",
+  "notes": "从搜索结果打开一本书时，如果第一个书源打不开，自动换同一本书在别的书源里的结果；加固首次启动时内置书源的装入。",
+  "url": "https://raw.githubusercontent.com/read0001/read/main/releases/openread-1.0.6.apk",
+  "size": 2998154,
+  "sha256": "74ac09f4ffb26f15ac21b3fe5e14b958b646646c1cb2ae19c65fbfbfa3b12928"
 }
