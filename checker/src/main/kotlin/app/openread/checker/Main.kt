@@ -6,6 +6,7 @@ import app.openread.engine.JsonCodec
 import app.openread.engine.Mirrors
 import app.openread.engine.Probe
 import app.openread.engine.ProbeResult
+import app.openread.engine.TocConsistency
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -93,6 +94,10 @@ private fun usable(src: BookSource, blocklist: List<String>): String? {
 }
 
 fun main(args: Array<String>) {
+    if (args.firstOrNull() == "tail" && args.size >= 2) {
+        tailReport(args.drop(1), Http(proxy = proxyFromEnv(), timeoutSec = 20))
+        exitProcess(0)
+    }
     if (args.firstOrNull() == "debug" && args.size >= 3) {
         debugSource(args.drop(1), Http(proxy = proxyFromEnv(), timeoutSec = 20))
         exitProcess(0)
@@ -153,6 +158,14 @@ fun main(args: Array<String>) {
     }
     executor.shutdownNow()
 
+    // 3b. a source that returns only the first page of a table of contents passes every probe step: compare with the others
+    val truncated = TocConsistency.incomplete(results)
+    if (truncated.isNotEmpty()) println("incomplete table of contents (far fewer chapters than other sources): ${truncated.size}")
+    for (i in results.indices) {
+        val r = results[i]
+        if (r.key in truncated) results[i] = ProbeResult(r.key, r.name, false, "toc", "目录不完整：只有 ${r.chapters} 章，其他书源多得多", r.searchMs, r.totalMs, r.keyword, r.book, r.chapters, 0)
+    }
+
     // 4. choose what to publish
     val byKey = pool.mapValues { it.value.first }
     val state = readState(stateFile)
@@ -167,7 +180,8 @@ fun main(args: Array<String>) {
         exitProcess(1)
     }
     // A source that worked last time and failed once may just have had a bad moment: keep it until it fails twice running.
-    val retained = results.filter { !it.ok && it.key in prevKeys && (fails[it.key] ?: 0) < 2 }
+    // (A truncated table of contents is not a bad moment, so it is never kept.)
+    val retained = results.filter { !it.ok && it.key in prevKeys && (fails[it.key] ?: 0) < 2 && it.error?.startsWith("目录不完整") != true }
     // Stable order (collection order) so a run that changes nothing writes the same file and CI makes no commit.
     val order = pool.keys.withIndex().associate { it.value to it.index }
     val chosen = (passing + retained).sortedBy { order[it.key] ?: Int.MAX_VALUE }

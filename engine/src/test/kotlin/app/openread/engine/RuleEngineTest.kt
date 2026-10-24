@@ -207,4 +207,114 @@ class RuleEngineTest {
         val e = runCatching { Douban.parseInterests("""{"request":"GET /v2/book/1/interests","msg":"need_permission","code":1000}""") }.exceptionOrNull()
         assertTrue(e is DoubanException && e.message!!.contains("登录"))
     }
+
+    private fun chap(vararg titles: String) = titles.mapIndexed { i, t -> Chapter(i, t, "https://e.com/$i-$t") }
+
+    @Test fun chapterNumbersReadChineseAndArabicNumerals() {
+        assertEquals(1593, ChapterNumbers.of("第一千五百九十三章 古帝洞府所在"))
+        assertEquals(832, ChapterNumbers.of("第832章 莫崖 【第一更！】"))
+        assertEquals(10, ChapterNumbers.of("第十章 借钱"))
+        assertEquals(1010, ChapterNumbers.of("第一千零一十章 x"))
+        assertEquals(null, ChapterNumbers.of("《斗破苍穹：斗帝之路》手游·角色传记（下）"))
+    }
+
+    @Test fun latestChaptersBlockInFrontMovesToTheEnd() {
+        val head = listOf("第1593章 新", "第1464章 d", "第1463章 c", "第1462章 b")
+        val main = (1..12).map { "第${it}章 x$it" }
+        val fixed = TocFix.apply(chap(*(head + main).toTypedArray()))
+        assertEquals("第1章 x1", fixed.first().title)
+        assertEquals(listOf("第1462章 b", "第1463章 c", "第1464章 d", "第1593章 新"), fixed.takeLast(4).map { it.title })
+    }
+
+    @Test fun wholeListInDescendingOrderIsReversedAndAscendingIsLeftAlone() {
+        val desc = chap(*(20 downTo 1).map { "第${it}章" }.toTypedArray())
+        assertEquals("第1章", TocFix.apply(desc).first().title)
+        val asc = chap(*(1..20).map { "第${it}章" }.toTypedArray())
+        assertEquals(asc.map { it.title }, TocFix.apply(asc).map { it.title })
+        val unnumbered = chap(*(1..20).map { "序$it" }.toTypedArray())
+        assertEquals(unnumbered.map { it.title }, TocFix.apply(unnumbered).map { it.title })
+    }
+
+    private fun tocSource(pages: Int, nextRule: String?): Pair<BookSource, com.sun.net.httpserver.HttpServer> {
+        val srv = com.sun.net.httpserver.HttpServer.create(java.net.InetSocketAddress("127.0.0.1", 0), 0)
+        for (p in 1..pages) srv.createContext("/toc$p") { ex ->
+            val items = (1..5).joinToString("") { n -> val c = (p - 1) * 5 + n; "<li><a href='/c/$c'>第${c}章</a></li>" }
+            val nav = if (p < pages) "<a href='/toc${p + 1}'>下一页</a>" else ""
+            val b = "<html><body><ul>$items</ul><div id='pages'>第$p/$pages 页</div>$nav</body></html>".toByteArray()
+            ex.sendResponseHeaders(200, b.size.toLong()); ex.responseBody.use { it.write(b) }
+        }
+        srv.start()
+        val base = "http://127.0.0.1:${srv.address.port}"
+        val next = nextRule?.let { ""","nextTocUrl":${kotlinx.serialization.json.JsonPrimitive(it.replace("BASE", base))}""" }.orEmpty()
+        val json = """{"bookSourceUrl":"$base","bookSourceName":"t","ruleToc":{"chapterList":"tag.li","chapterName":"tag.a@text","chapterUrl":"tag.a@href"$next}}"""
+        return BookSource.parseList(json).first() to srv
+    }
+
+    @Test fun tocFollowsAPlainNextLinkWhenTheRuleHasNone() {
+        val (src, srv) = tocSource(4, null)
+        try {
+            val book = Book("${src.baseUrl}/toc1", "${src.baseUrl}/toc1", src.key, "t", "n", "a")
+            val trace = ArrayList<String>()
+            val toc = WebBook(src, http).chapters(book, trace)
+            assertEquals(20, toc.size, "all four pages")
+            assertEquals(4, trace.size)
+        } finally { srv.stop(0) }
+    }
+
+    @Test fun tocRuleThatListsEveryPageIsFetchedAllAtOnce() {
+        // Page 1 yields the addresses of pages 2-4; later pages cannot produce the list again (as in real sources).
+        val (src, srv) = tocSource(4, "<js>baseUrl.indexOf('toc1')>=0 ? ['BASE/toc2','BASE/toc3','BASE/toc4'] : []</js>")
+        try {
+            val book = Book("${src.baseUrl}/toc1", "${src.baseUrl}/toc1", src.key, "t", "n", "a")
+            val trace = ArrayList<String>()
+            val toc = WebBook(src, http).chapters(book, trace)
+            assertEquals(20, toc.size)
+            assertEquals(listOf("第1章", "第5章", "第10章", "第20章"), listOf(toc[0], toc[4], toc[9], toc[19]).map { it.title })
+            assertEquals(4, trace.size)
+        } finally { srv.stop(0) }
+    }
+
+    @Test fun sourcesWithFarFewerChaptersThanTheOthersAreFlagged() {
+        fun r(key: String, chapters: Int, book: String = "斗破苍穹") = ProbeResult(key, key, true, "content", null, 1, 1, "k", book, chapters, 500)
+        val results = listOf(r("a", 1660), r("b", 1664), r("c", 1625), r("d", 1914), r("e", 1662), r("tiny", 24), r("other-book", 12, "别的书"))
+        assertEquals(setOf("tiny"), TocConsistency.incomplete(results))
+        assertEquals(emptySet(), TocConsistency.incomplete(results.take(3)), "too few sources to judge")
+    }
+
+    private fun contentSource(nextRule: String): Pair<BookSource, com.sun.net.httpserver.HttpServer> {
+        val srv = com.sun.net.httpserver.HttpServer.create(java.net.InetSocketAddress("127.0.0.1", 0), 0)
+        for (p in 1..3) srv.createContext("/c1p$p") { ex ->
+            val b = "<html><body><div id='t'>第${p}页的内容。</div></body></html>".toByteArray()
+            ex.sendResponseHeaders(200, b.size.toLong()); ex.responseBody.use { it.write(b) }
+        }
+        srv.createContext("/toc") { ex -> val b = "<div id='t'>这是目录页，不是正文。</div>".toByteArray(); ex.sendResponseHeaders(200, b.size.toLong()); ex.responseBody.use { it.write(b) } }
+        srv.start()
+        val base = "http://127.0.0.1:${srv.address.port}"
+        val json = """{"bookSourceUrl":"$base","bookSourceName":"t","ruleContent":{"content":"id.t@text","nextContentUrl":${kotlinx.serialization.json.JsonPrimitive(nextRule.replace("BASE", base))}}}"""
+        return BookSource.parseList(json).first() to srv
+    }
+
+    @Test fun contentRuleThatListsEveryPageGetsAllOfThem() {
+        // Only page 1 can produce the list; asking again on page 2 yields nothing, as in real sources.
+        val (src, srv) = contentSource("<js>baseUrl.indexOf('c1p1')>=0 ? ['BASE/c1p2','BASE/c1p3'] : []</js>")
+        try {
+            val b = src.baseUrl
+            val book = Book("$b/book", "$b/toc", src.key, "t", "n", "a")
+            val text = WebBook(src, http).content(book, Chapter(0, "c", "$b/c1p1"))
+            assertEquals("第1页的内容。\n第2页的内容。\n第3页的内容。", text)
+        } finally { srv.stop(0) }
+    }
+
+    @Test fun lastChaptersNextLinkBackToTheTocIsNotAnotherPage() {
+        // The newest chapter has no next chapter to compare with; its "next" link points at the table of contents.
+        val (src, srv) = contentSource("<js>'BASE/toc'</js>")
+        try {
+            val b = src.baseUrl
+            val book = Book("$b/book", "$b/toc", src.key, "t", "n", "a")
+            val trace = ArrayList<String>()
+            val text = WebBook(src, http).content(book, Chapter(0, "c", "$b/c1p1"), nextChapterUrl = null, trace = trace)
+            assertEquals("第1页的内容。", text)
+            assertEquals(1, trace.size, "must not fetch the table of contents as a page of the chapter")
+        } finally { srv.stop(0) }
+    }
 }

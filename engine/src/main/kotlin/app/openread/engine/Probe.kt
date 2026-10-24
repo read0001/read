@@ -61,12 +61,30 @@ object Probe {
             stage = "content"
             val readable = toc.filter { !it.isVolume && !it.isVip && !it.isPay }
             val chapter = readable.getOrNull(1) ?: readable.firstOrNull() ?: return fail("没有免费章节")
-            val text = web.content(book, chapter, toc.getOrNull(chapter.index + 1)?.url)
+            val text = web.content(book, chapter, toc.getOrNull(chapter.index + 1)?.url, otherChapterUrls = toc.asSequence().filter { it.index != chapter.index }.map { it.url }.toSet())
             if (text.length < 120) return fail("正文只有 ${text.length} 字")
             if (junk.containsMatchIn(text.take(200))) return fail("正文是拦截页：${text.take(30)}")
             ProbeResult(src.key, src.bookSourceName, true, "content", null, searchMs, ms(), kw, bookName, chapters, text.length)
         } catch (e: Throwable) {
             fail(e.message ?: e.javaClass.simpleName)
         }
+    }
+}
+
+/**
+ * A source can pass every step of [Probe] and still hand out only the first page of a table of contents: its newest
+ * chapters are then simply missing, and nothing inside that one source shows it. Comparing the same book across sources does.
+ */
+object TocConsistency {
+    /** Keys of passing results whose chapter count is less than half of what the other sources report for the same book. */
+    fun incomplete(results: List<ProbeResult>, minSources: Int = 5): Set<String> {
+        val out = HashSet<String>()
+        for ((_, group) in results.filter { it.ok && !it.book.isNullOrBlank() }.groupBy { it.book }) {
+            if (group.size < minSources) continue
+            val sorted = group.map { it.chapters }.sorted()
+            val median = sorted[sorted.size / 2]
+            group.filter { it.chapters * 2 < median }.forEach { out.add(it.key) }
+        }
+        return out
     }
 }

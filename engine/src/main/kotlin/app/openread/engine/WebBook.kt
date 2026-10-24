@@ -126,59 +126,140 @@ class WebBook(val source: BookSource, private val http: Http) {
 
     // ---- table of contents ---------------------------------------------------------------------------------------
 
-    fun chapters(book: Book): List<Chapter> {
+    /** One fetched page of the table of contents. */
+    private class TocPage(val items: List<Chapter>, val next: List<String>)
+
+    /** [trace], when given, receives the address of every table-of-contents page that was fetched (for diagnostics). */
+    fun chapters(book: Book, trace: MutableList<String>? = null): List<Chapter> {
         val rule = source.ruleToc ?: throw SourceException("书源没有目录规则")
         var listRule = rule.chapterList?.trim().orEmpty()
         if (listRule.isEmpty()) throw SourceException("书源没有章节列表规则")
         val reverse = listRule.startsWith("-")
         if (reverse || listRule.startsWith("+")) listRule = listRule.substring(1)
 
-        val raw = ArrayList<Chapter>()
-        val visited = HashSet<String>()
-        var next: String? = book.tocUrl.ifBlank { book.bookUrl }
-        var pages = 0
-        while (next != null && visited.add(next) && pages++ < MAX_PAGES) {
-            val resp = fetch(AnalyzeUrl(next, source = source, http = http, data = book.data, book = book))
-            val pageAr = AnalyzeRule(book.data, source, http, book).setContent(resp.body, next).setRedirectUrl(resp.url)
+        fun loadPage(url: String): TocPage {
+            if (trace != null) synchronized(trace) { trace.add(url) }
+            val resp = fetch(AnalyzeUrl(url, source = source, http = http, data = book.data, book = book))
+            val pageAr = AnalyzeRule(book.data, source, http, book).setContent(resp.body, url).setRedirectUrl(resp.url)
+            val items = ArrayList<Chapter>()
             for (item in pageAr.getElements(listRule)) {
                 val data = RuleData().also { it.variables.putAll(book.data.variables) }
                 val ar = pageAr.child(item, data)
                 val title = ar.getString(rule.chapterName).trim()
                 if (title.isEmpty()) continue
                 val isVolume = ar.getString(rule.isVolume).isTruthy()
-                var url = ar.getString(rule.chapterUrl, isUrl = true)
-                if (url.isBlank()) url = if (isVolume) title + raw.size else next
-                raw.add(
+                var chapterUrl = ar.getString(rule.chapterUrl, isUrl = true)
+                if (chapterUrl.isBlank()) chapterUrl = if (isVolume) title + items.size else url
+                items.add(
                     Chapter(
-                        index = raw.size, title = title, url = url, isVolume = isVolume,
+                        index = -1, title = title, url = chapterUrl, isVolume = isVolume,
                         isVip = ar.getString(rule.isVip).isTruthy(), isPay = ar.getString(rule.isPay).isTruthy(),
                         updateTime = ar.getString(rule.updateTime).ifBlank { null }, data = data,
                     ),
                 )
             }
-            next = pageAr.getStringList(rule.nextTocUrl, isUrl = true).firstOrNull { it !in visited && it != next }
+            // No next-page rule: many mobile sites still paginate, so look for an ordinary "下一页" link instead.
+            val next = if (rule.nextTocUrl.isNullOrBlank()) listOfNotNull(TocPaging.nextLink(resp.body, resp.url))
+            else pageAr.getStringList(rule.nextTocUrl, isUrl = true)
+            return TocPage(items, next)
         }
-        val ordered = (if (reverse) raw.asReversed() else raw).distinctBy { it.url }
+
+        val start = book.tocUrl.ifBlank { book.bookUrl }
+        val visited = HashSet<String>().apply { add(start) }
+        val raw = ArrayList<Chapter>()
+        val seenUrls = HashSet<String>()
+        val first = loadPage(start)
+        first.items.forEach { if (seenUrls.add(it.url)) raw.add(it) }
+
+        val more = first.next.filter { it !in visited }.distinct()
+        if (more.size > 1) {
+            // The rule listed every remaining page at once (often a script that builds the addresses from "page 1 of N"):
+            // fetch them all, in order, and do not chain from them. Chaining would ask the rule again on page 2, where it
+            // often cannot produce the list.
+            val pages = more.take(MAX_PAGES)
+            pages.forEach { visited.add(it) }
+            loadAll(pages, ::loadPage).forEach { p -> p.items.forEach { if (seenUrls.add(it.url)) raw.add(it) } }
+        } else {
+            var next = more.firstOrNull()
+            var pages = 0
+            while (next != null && visited.add(next) && pages++ < MAX_PAGES) {
+                val p = loadPage(next)
+                val before = raw.size
+                p.items.forEach { if (seenUrls.add(it.url)) raw.add(it) }
+                if (raw.size == before) break // a "next" link that adds nothing new is not a table-of-contents page
+                next = p.next.firstOrNull { it !in visited }
+            }
+        }
+        val ordered = TocFix.apply(if (reverse) raw.asReversed() else raw)
         return ordered.mapIndexed { i, c -> c.copy(index = i) }
+    }
+
+    /** Fetches [urls] with a few requests at a time and returns the pages in the order given. A page that fails twice fails the whole list. */
+    private fun <T> loadAll(urls: List<String>, load: (String) -> T): List<T> {
+        val pool = java.util.concurrent.Executors.newFixedThreadPool(8) { r -> Thread(r).apply { isDaemon = true } }
+        try {
+            val futures = urls.map { u ->
+                pool.submit<T> { try { load(u) } catch (e: Exception) { load(u) } }
+            }
+            return futures.mapIndexed { i, f ->
+                try { f.get(60, java.util.concurrent.TimeUnit.SECONDS) }
+                catch (e: java.util.concurrent.ExecutionException) { throw SourceException("第 ${i + 2} 页加载失败：${e.cause?.message}", e.cause) }
+                catch (e: java.util.concurrent.TimeoutException) { throw SourceException("第 ${i + 2} 页加载超时") }
+            }
+        } finally {
+            pool.shutdownNow()
+        }
     }
 
     // ---- chapter text --------------------------------------------------------------------------------------------
 
-    fun content(book: Book, chapter: Chapter, nextChapterUrl: String? = null): String {
+    /**
+     * [trace], when given, receives the address of every page that was fetched for this chapter (for diagnostics).
+     * [otherChapterUrls] are the addresses of the book's other chapters: a "next page" link that leads to one of them, or to
+     * the book's own page, is the end of this chapter, not another page of it. That matters most for the newest chapter, which
+     * has no next chapter to compare with and whose last "next" link often points back at the table of contents.
+     */
+    fun content(
+        book: Book, chapter: Chapter, nextChapterUrl: String? = null, trace: MutableList<String>? = null,
+        otherChapterUrls: Set<String> = emptySet(),
+    ): String {
         val rule = source.ruleContent ?: throw SourceException("书源没有正文规则")
         val contentRule = rule.content?.takeIf { it.isNotBlank() } ?: throw SourceException("书源没有正文内容规则")
-        val parts = ArrayList<String>()
-        val visited = HashSet<String>()
-        var url: String? = chapter.url
-        var pages = 0
-        while (url != null && visited.add(url) && pages++ < MAX_PAGES) {
+        fun key(u: String) = u.substringBefore("#").trimEnd('/')
+        val stop = HashSet<String>().apply {
+            otherChapterUrls.forEach { add(key(it)) }
+            nextChapterUrl?.let { add(key(it)) }
+            add(key(book.tocUrl)); add(key(book.bookUrl)); add(key(source.baseUrl))
+            remove(key(chapter.url))
+        }
+
+        class Page(val text: String, val next: List<String>)
+        fun load(url: String): Page {
+            if (trace != null) synchronized(trace) { trace.add(url) }
             val resp = fetch(AnalyzeUrl(url, source = source, http = http, data = chapter.data, book = book, chapter = chapter))
             val ar = AnalyzeRule(chapter.data, source, http, book, chapter).setContent(resp.body, url).setRedirectUrl(resp.url)
-            val text = ar.getString(contentRule)
-            if (text.isNotBlank()) parts.add(text)
-            url = if (rule.nextContentUrl.isNullOrBlank()) null
-            else ar.getStringList(rule.nextContentUrl, isUrl = true)
-                .firstOrNull { it !in visited && it != nextChapterUrl && it != chapter.url && !sameChapter(it, nextChapterUrl) }
+            val next = if (rule.nextContentUrl.isNullOrBlank()) emptyList() else ar.getStringList(rule.nextContentUrl, isUrl = true)
+            return Page(ar.getString(contentRule), next)
+        }
+
+        val parts = ArrayList<String>()
+        val visited = HashSet<String>().apply { add(key(chapter.url)) }
+        val first = load(chapter.url)
+        if (first.text.isNotBlank()) parts.add(first.text)
+        val more = first.next.filter { key(it) !in visited && key(it) !in stop }.distinctBy(::key)
+        if (more.size > 1) {
+            // Every remaining page was listed at once (see the table of contents): take them all, in order, without chaining.
+            val pages = more.take(MAX_PAGES)
+            pages.forEach { visited.add(key(it)) }
+            loadAll(pages, ::load).forEach { if (it.text.isNotBlank()) parts.add(it.text) }
+        } else {
+            var next = more.firstOrNull()
+            var n = 0
+            while (next != null && visited.add(key(next)) && n++ < MAX_PAGES) {
+                val p = load(next)
+                if (p.text.isNotBlank()) parts.add(p.text)
+                next = p.next.firstOrNull { key(it) !in visited && key(it) !in stop }
+            }
         }
         var text = parts.joinToString("\n")
         rule.replaceRegex?.takeIf { it.isNotBlank() }?.let { text = applyReplace(text, it) }
@@ -186,8 +267,6 @@ class WebBook(val source: BookSource, private val http: Http) {
         if (text.isBlank()) throw SourceException("正文为空")
         return text
     }
-
-    private fun sameChapter(a: String, b: String?) = b != null && a.substringBefore("#") == b.substringBefore("#")
 
     private fun applyReplace(text: String, rule: String): String {
         val p = rule.split("##")

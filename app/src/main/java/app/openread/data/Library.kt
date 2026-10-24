@@ -203,8 +203,9 @@ class Library(private val context: Context, private val db: AppDb, private val e
         val f = cacheFile(row.bookUrl, ch.url)
         if (!refresh && f.exists()) return@withContext f.readText()
         val web = engine.web(row.origin) ?: error("书源已被删除")
-        val next = db.chapters().list(row.bookUrl).getOrNull(ch.idx + 1)?.url
-        val text = web.content(row.toBook(), ch.toChapter(), next)
+        val all = db.chapters().list(row.bookUrl)
+        val next = all.getOrNull(ch.idx + 1)?.url
+        val text = web.content(row.toBook(), ch.toChapter(), next, otherChapterUrls = all.asSequence().filter { it.idx != ch.idx }.map { it.url }.toSet())
         f.parentFile?.mkdirs()
         // Write beside the target and rename, so a reader never sees half a chapter.
         val tmp = File(f.parentFile, f.name + ".tmp")

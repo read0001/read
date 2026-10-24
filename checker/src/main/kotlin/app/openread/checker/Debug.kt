@@ -3,6 +3,7 @@ package app.openread.checker
 import app.openread.engine.AnalyzeUrl
 import app.openread.engine.Book
 import app.openread.engine.BookSource
+import app.openread.engine.ChapterNumbers
 import app.openread.engine.EngineLog
 import app.openread.engine.Http
 import app.openread.engine.Mirrors
@@ -37,8 +38,16 @@ fun debugSource(args: List<String>, http: Http) {
     runCatching { web.bookInfo(book) }.onFailure { println("info failed: $it"); it.printStackTrace(System.out); return }
     println("info: ${book.name} / ${book.author} / toc=${book.tocUrl} / intro=${book.intro?.take(60)}")
 
-    val toc = runCatching { web.chapters(book) }.onFailure { println("toc failed: $it"); it.printStackTrace(System.out); return }.getOrThrow()
-    println("toc: ${toc.size} chapters")
+    val tocPages = ArrayList<String>()
+    val toc = runCatching { web.chapters(book, tocPages) }.onFailure { println("toc failed: $it"); it.printStackTrace(System.out); return }.getOrThrow()
+    println("toc: ${toc.size} chapters from ${tocPages.size} page(s): ${tocPages.take(6)}")
+    println("toc rule: ${src.ruleToc?.chapterList} | next: ${src.ruleToc?.nextTocUrl}")
+    // where the chapter numbers stop increasing: a sign the list is in the wrong order or has blocks pasted in
+    val nums = toc.map { ChapterNumbers.of(it.title) }
+    val breaks = (1 until toc.size).filter { i -> val a = nums[i - 1]; val b = nums[i]; a != null && b != null && b < a }
+    println("numbered=${nums.count { it != null }}/${toc.size}  order breaks at: ${breaks.take(12)}")
+    breaks.take(3).forEach { i -> println("   break at $i: '${toc[i - 1].title}' -> '${toc[i].title}'") }
+    println("   first: ${toc.take(3).map { it.title }}  last: ${toc.takeLast(3).map { it.title }}")
     toc.take(3).forEach { println("  ${it.index} ${it.title} ${it.url} vip=${it.isVip}") }
     val ch = toc.filter { !it.isVolume && !it.isVip }.getOrNull(1) ?: toc.firstOrNull() ?: return
 

@@ -171,7 +171,7 @@ object JsonCodec {
 
 /** Variables set with `@put` / `java.put`; shared between a search hit, its book and its chapters, as in Legado. */
 class RuleData {
-    val variables = LinkedHashMap<String, String>()
+    val variables: MutableMap<String, String> = java.util.Collections.synchronizedMap(LinkedHashMap())
     fun put(key: String, value: String) { variables[key] = value }
     fun get(key: String): String? = variables[key]
 }
