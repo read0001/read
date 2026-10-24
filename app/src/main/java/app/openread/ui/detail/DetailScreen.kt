@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -25,6 +27,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -57,6 +60,7 @@ import app.openread.data.toBook
 import app.openread.data.toChapter
 import app.openread.engine.Book
 import app.openread.engine.Chapter
+import app.openread.engine.Freshness
 import app.openread.engine.SearchBook
 import app.openread.ui.components.BookCover
 import app.openread.ui.components.factory
@@ -77,6 +81,8 @@ data class DetailState(
     val finding: Boolean = false,
     val switching: Boolean = false,
     val message: String? = null,
+    /** A source that is several chapters ahead of the one being shown, if the search found one. */
+    val fresher: SearchBook? = null,
 )
 
 class DetailViewModel(private val c: AppContainer, private val bookUrl: String) : ViewModel() {
@@ -119,7 +125,8 @@ class DetailViewModel(private val c: AppContainer, private val bookUrl: String) 
             val r = runCatching { c.library.open(cand) }
             val ok = r.getOrNull()?.takeIf { it.second.isNotEmpty() }
             if (ok != null) {
-                _state.update { it.copy(loading = false, error = null, book = ok.first, chapters = ok.second, switching = false, message = if (i > 0) "${hit.originName} 打不开，已换到 ${cand.originName}" else null) }
+                val fresher = Freshness.fresherThan(cand, (listOf(hit) + alternates).filter { it.origin != cand.origin })
+                _state.update { it.copy(loading = false, error = null, book = ok.first, chapters = ok.second, switching = false, fresher = fresher, message = if (i > 0) "${hit.originName} 打不开，已换到 ${cand.originName}" else null) }
                 return
             }
             firstError = firstError ?: "${cand.originName}：${r.exceptionOrNull()?.message ?: "目录为空"}"
@@ -159,9 +166,11 @@ class DetailViewModel(private val c: AppContainer, private val bookUrl: String) 
 
     fun dismissAlternatives() = _state.update { it.copy(alternatives = null) }
 
+    fun switchToFresher() { _state.value.fresher?.let { switchTo(it) } }
+
     fun switchTo(target: SearchBook) {
         viewModelScope.launch {
-            _state.update { it.copy(alternatives = null, switching = true) }
+            _state.update { it.copy(alternatives = null, switching = true, fresher = null) }
             val b = _state.value.book ?: return@launch
             val row = c.library.book(b.bookUrl)
             if (row != null) {
@@ -251,6 +260,17 @@ fun DetailScreen(bookUrl: String, onBack: () -> Unit, onRead: (String, Int?) -> 
                             maxLines = if (expanded) Int.MAX_VALUE else 5, overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.clickable { expanded = !expanded }.padding(horizontal = 16.dp),
                         )
+                    }
+                    s.fresher?.let { f ->
+                        item {
+                            ListItem(
+                                headlineContent = { Text("这个书源更新较慢") },
+                                supportingContent = { Text("最新到「${s.chapters.lastOrNull()?.title.orEmpty()}」，${f.originName} 已到「${f.latestChapterTitle.orEmpty()}」", maxLines = 2, overflow = TextOverflow.Ellipsis) },
+                                trailingContent = { TextButton(onClick = vm::switchToFresher) { Text("换过去") } },
+                                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).clip(RoundedCornerShape(12.dp)),
+                            )
+                        }
                     }
                     item {
                         ListItem(

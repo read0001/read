@@ -51,6 +51,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import app.openread.AppContainer
 import app.openread.container
 import app.openread.data.HistoryRow
+import app.openread.engine.Freshness
 import app.openread.engine.SearchBook
 import app.openread.ui.components.BookCover
 import app.openread.ui.components.EmptyState
@@ -94,7 +95,7 @@ class SearchViewModel(private val c: AppContainer) : ViewModel() {
                 for (h in hits) index.getOrPut(h.name + "\u0000" + h.author) { BookGroup(h.name, h.author, mutableListOf()) }.hits.add(h)
                 // exact title matches first, then by how many sources have the book
                 val sorted = index.values.sortedWith(compareByDescending<BookGroup> { it.name == k }.thenByDescending { it.name.contains(k) }.thenByDescending { it.hits.size })
-                _state.update { it.copy(groups = sorted.map { g -> BookGroup(g.name, g.author, g.hits.toMutableList()) }, answered = answered) }
+                _state.update { it.copy(groups = sorted.map { g -> BookGroup(g.name, g.author, Freshness.newestFirst(g.hits).toMutableList()) }, answered = answered) }
             }
             _state.update { it.copy(searching = false) }
         }

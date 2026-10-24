@@ -48,6 +48,8 @@ fun debugSource(args: List<String>, http: Http) {
     println("numbered=${nums.count { it != null }}/${toc.size}  order breaks at: ${breaks.take(12)}")
     breaks.take(3).forEach { i -> println("   break at $i: '${toc[i - 1].title}' -> '${toc[i].title}'") }
     println("   first: ${toc.take(3).map { it.title }}  last: ${toc.takeLast(3).map { it.title }}")
+    println("   HEAD(16): ${toc.take(16).joinToString(" | ") { it.title.take(10) }}")
+    println("   TAIL urls: ${toc.takeLast(3).joinToString(" | ") { it.url.takeLast(45) }}")
     toc.take(3).forEach { println("  ${it.index} ${it.title} ${it.url} vip=${it.isVip}") }
     val ch = toc.filter { !it.isVolume && !it.isVip }.getOrNull(1) ?: toc.firstOrNull() ?: return
 

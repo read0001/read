@@ -27,3 +27,18 @@ object ChapterNumbers {
         return total + section + digit
     }
 }
+
+/** How far a source has got with a serial: serials differ a lot, and a source stuck at chapter 70 when others are at 94 is the wrong one to open. */
+object Freshness {
+    /** The chapter number of the source's newest chapter, or -1 when it does not say or the title has no number. */
+    fun of(hit: SearchBook): Int = hit.latestChapterTitle?.let(ChapterNumbers::of) ?: -1
+
+    /** Most up to date first; sources that do not say keep their order after the ones that do. */
+    fun newestFirst(hits: List<SearchBook>): List<SearchBook> = hits.sortedByDescending(::of)
+
+    /** A source in [others] that is at least [by] chapters ahead of [mine], the furthest one; null when mine is fine or unknown. */
+    fun fresherThan(mine: SearchBook, others: List<SearchBook>, by: Int = 3): SearchBook? {
+        val m = of(mine).takeIf { it >= 0 } ?: return null
+        return others.maxByOrNull(::of)?.takeIf { of(it) >= m + by }
+    }
+}

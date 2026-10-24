@@ -94,6 +94,14 @@ private fun usable(src: BookSource, blocklist: List<String>): String? {
 }
 
 fun main(args: Array<String>) {
+    if (args.firstOrNull() == "dump" && args.size >= 6) {
+        dumpChapters(args.drop(1), Http(proxy = proxyFromEnv(), timeoutSec = 20))
+        exitProcess(0)
+    }
+    if (args.firstOrNull() == "compare" && args.size >= 4) {
+        compareChapter(args.drop(1), Http(proxy = proxyFromEnv(), timeoutSec = 20))
+        exitProcess(0)
+    }
     if (args.firstOrNull() == "tail" && args.size >= 2) {
         tailReport(args.drop(1), Http(proxy = proxyFromEnv(), timeoutSec = 20))
         exitProcess(0)

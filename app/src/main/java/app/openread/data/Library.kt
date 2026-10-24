@@ -5,6 +5,8 @@ import androidx.room.withTransaction
 import app.openread.engine.Book
 import app.openread.engine.BookSource
 import app.openread.engine.Chapter
+import app.openread.engine.Freshness
+import app.openread.engine.PreviewGuard
 import app.openread.engine.Http
 import app.openread.engine.JsonCodec
 import app.openread.engine.Mirrors
@@ -200,20 +202,40 @@ class Library(private val context: Context, private val db: AppDb, private val e
 
     fun isCached(bookUrl: String, ch: ChapterRow) = cacheFile(bookUrl, ch.url).exists()
 
-    /** Chapter text from disk, or from the book's source (and then saved). [refresh] skips and replaces the saved copy. */
-    suspend fun text(row: BookRow, ch: ChapterRow, refresh: Boolean = false): String = withContext(Dispatchers.IO) {
+    /**
+     * Chapter text from disk, or from the book's source (and then saved). [refresh] skips and replaces the saved copy.
+     * With [guard], a short chapter that turns out to be a teaser padded with other novels' sentences is trimmed (see
+     * [PreviewGuard]); the early chapters used as reference are read with it off.
+     */
+    suspend fun text(row: BookRow, ch: ChapterRow, refresh: Boolean = false, guard: Boolean = true): String = withContext(Dispatchers.IO) {
         val f = cacheFile(row.bookUrl, ch.url)
         if (!refresh && f.exists()) return@withContext f.readText()
         val web = engine.web(row.origin) ?: error("书源已被删除")
         val all = db.chapters().list(row.bookUrl)
         val next = all.getOrNull(ch.idx + 1)?.url
-        val text = web.content(row.toBook(), ch.toChapter(), next, otherChapterUrls = all.asSequence().filter { it.idx != ch.idx }.map { it.url }.toSet())
+        var text = web.content(row.toBook(), ch.toChapter(), next, otherChapterUrls = all.asSequence().filter { it.idx != ch.idx }.map { it.url }.toSet())
+        if (guard && PreviewGuard.isCandidate(text)) {
+            val ref = referenceFor(row, all, except = ch.idx)
+            val r = ref?.let { PreviewGuard.trim(text, it) }
+            if (r != null && r.trimmed) text = r.text + "\n" + PreviewGuard.NOTICE
+        }
         f.parentFile?.mkdirs()
         // Write beside the target and rename, so a reader never sees half a chapter.
         val tmp = File(f.parentFile, f.name + ".tmp")
         tmp.writeText(text)
         if (!tmp.renameTo(f)) { f.delete(); tmp.renameTo(f) }
         text
+    }
+
+    private val referenceLock = Mutex()
+    private val references = HashMap<String, PreviewGuard.Reference?>()
+
+    /** What this book's free chapters look like, from two early ones (usually already on disk); built once per book. */
+    private suspend fun referenceFor(row: BookRow, all: List<ChapterRow>, except: Int): PreviewGuard.Reference? = referenceLock.withLock {
+        if (references.containsKey(row.bookUrl)) return@withLock references[row.bookUrl]
+        val early = all.filter { !it.isVolume && it.idx != except && it.idx in 3..24 }.take(40).let { c -> listOfNotNull(c.getOrNull(2), c.getOrNull(12)) }
+        val texts = early.mapNotNull { runCatching { text(row, it, guard = false) }.getOrNull() }
+        PreviewGuard.reference(texts).also { references[row.bookUrl] = it }
     }
 
     // ---- changing source -----------------------------------------------------------------------------------------
@@ -226,7 +248,7 @@ class Library(private val context: Context, private val db: AppDb, private val e
             hits.filter { it.name == row.name && (row.author.isBlank() || it.author.isBlank() || it.author == row.author) }
                 .firstOrNull()?.let { found.add(it) }
         }
-        found
+        Freshness.newestFirst(found)
     }
 
     /** Moves a shelf book to another source, keeping the reading position by chapter title, then by index. */

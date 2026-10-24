@@ -210,7 +210,7 @@ internal object Templates {
 }
 
 /** Coercions shared by the engine: a rule result of any kind becomes a string the way Legado shows it. */
-internal object Values {
+object Values {
     fun text(v: Any?): String = when (v) {
         null -> ""
         is String -> v

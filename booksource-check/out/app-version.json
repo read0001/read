@@ -1,8 +1,8 @@
 {
-  "versionCode": 7,
-  "versionName": "1.0.6",
-  "notes": "从搜索结果打开一本书时，如果第一个书源打不开，自动换同一本书在别的书源里的结果；加固首次启动时内置书源的装入。",
-  "url": "https://raw.githubusercontent.com/read0001/read/main/releases/openread-1.0.6.apk",
-  "size": 2998154,
-  "sha256": "74ac09f4ffb26f15ac21b3fe5e14b958b646646c1cb2ae19c65fbfbfa3b12928"
+  "versionCode": 8,
+  "versionName": "1.0.7",
+  "notes": "修复最新章节：付费章节后面混入别的小说的句子会被隐藏（并说明）；目录里最新章节块排到末尾、重复章节去掉；搜索结果按最新章节排序，更新慢的书源会提示换源。",
+  "url": "https://raw.githubusercontent.com/read0001/read/main/releases/openread-1.0.7.apk",
+  "size": 3014538,
+  "sha256": "b708d5205260a7a01e0f575595c12e8881344ae6f0b9b7e645d7c9ad75213ae3"
 }

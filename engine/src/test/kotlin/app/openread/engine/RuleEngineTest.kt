@@ -317,4 +317,112 @@ class RuleEngineTest {
             assertEquals(1, trace.size, "must not fetch the table of contents as a page of the chapter")
         } finally { srv.stop(0) }
     }
+
+    @Test fun latestBlockFollowedByAnUnnumberedNoticeStillMovesToTheEnd() {
+        // 奇书网 on 剑烛大荒: 94…83 first, then "欢迎收藏", then chapter 1…82.
+        val head = (94 downTo 83).map { "第${it}章 新$it" }
+        val main = listOf("欢迎收藏") + (1..82).map { "第${it}章 x$it" }
+        val fixed = TocFix.apply(chap(*(head + main).toTypedArray()))
+        assertEquals("欢迎收藏", fixed.first().title)
+        assertEquals("第94章 新94", fixed.last().title)
+        assertEquals(95, fixed.size)
+        val numbers = fixed.mapNotNull { ChapterNumbers.of(it.title) }
+        assertEquals(numbers.sorted(), numbers, "the whole list ends up in ascending order")
+    }
+
+    @Test fun aSingleNewestChapterInFrontMovesToo() {
+        val fixed = TocFix.apply(chap("第94章 新", "欢迎收藏", *(1..12).map { "第${it}章" }.toTypedArray()))
+        assertEquals("第94章 新", fixed.last().title)
+    }
+
+    @Test fun aListThatSimplyStartsAtChapterOneIsLeftAlone() {
+        val list = chap("欢迎收藏", *(1..30).map { "第${it}章" }.toTypedArray())
+        assertEquals(list.map { it.title }, TocFix.apply(list).map { it.title })
+    }
+
+    @Test fun theSameChapterPostedTwiceKeepsTheFirst() {
+        // 红叶书斋: two different addresses, one title, one text.
+        val list = chap(*(1..10).map { "第${it}章 x" }.toTypedArray(), "第10章 x", "第11章 y")
+        val fixed = TocFix.apply(list)
+        assertEquals(listOf("第9章 x", "第10章 x", "第11章 y"), fixed.takeLast(3).map { it.title })
+        assertEquals(11, fixed.size)
+    }
+
+    @Test fun freshestSourceComesFirstAndTheSlowOneIsRecognised() {
+        fun hit(origin: String, latest: String?) = SearchBook("斗破", "土豆", "u-$origin", origin, origin, latestChapterTitle = latest)
+        val slow = hit("slow", "第七十章 夜深")
+        val fast = hit("fast", "第九十四章 吊诡")
+        val unknown = hit("unknown", null)
+        assertEquals(listOf("fast", "slow", "unknown"), Freshness.newestFirst(listOf(unknown, slow, fast)).map { it.origin })
+        assertEquals("fast", Freshness.fresherThan(slow, listOf(fast, unknown))?.origin)
+        assertEquals(null, Freshness.fresherThan(fast, listOf(slow)), "the newest source has nothing fresher")
+        assertEquals(null, Freshness.fresherThan(unknown, listOf(fast)), "no number to compare: do not guess")
+    }
+
+
+    // ---- PreviewGuard: synthetic text (no real novel is stored in the tests) ----------------------------------------------
+
+    private val heroes = listOf("丁松言", "罗十二娘")
+    private fun fullChapter(n: Int) = (1..90).joinToString("\n") { i -> "${heroes[i % 2]}在第${n}个夜里走过便宜酒垆的后院，${heroes[(i + 1) % 2]}正在门口等着他，两个人说了第${i}句话。" }
+
+    private val strangers = listOf(
+        "乔东阳召开家庭会议的时候，没有一个亲戚愿意站出来替他说话，他笑称自己早就被奶奶开除了族籍。",
+        "舰艇甲板上，护航官兵整齐列队，与前来送别的亲人和战友挥手告别，汽笛声久久回荡在港口的上空。",
+        "通讯兵联络一三九师师部，却始终无人应答，唯有一个解释，那就是师部已经在炮火中沦陷了。",
+        "唐星薇把合同推到叶凌道面前，认真地问他究竟愿不愿意同自己一起开办一家全新的娱乐公司。",
+        "池月身前的双座山丘不时撞在他坚硬的脊背上，她心里慌乱得厉害，嘴上却一点也不肯服软。",
+        "巴达维亚舰队在混乱之中勉强组织起战列线，但这完全是应急之举，旗舰金狮号已经中弹起火。",
+        "瓦岗军的进攻极为顺利，裴仁基的虎牢军团与孟让手底下的士兵都是能征善战的老兵油子。",
+        "顾十八娘怔了一怔，打量着眼前这个年轻人，四周听见动静的众人也都突然安静了下来。",
+        "收好五行玛瑙的秦逸带着龙宝宝，同众人一起朝着先前那块阴凉的地方慢慢走了过去。",
+        "那血族连连闪动，身影在空中留下一道接着一道的残影，每一次出现都在撕扯猎物的衣角。",
+        "杨菡突然意识到了将士们的难处，竟然主动提出把自己多年积攒下来的私房钱全都拿出来。",
+        "阿玉很是失落，但也知道有些事情不能强求，既然杜若梅不愿意当她的朋友，她也就罢了。",
+        "他的生日那天，一家三口去了西班牙的特内里费岛旅行，岛上的海风带着一股咸咸的味道。",
+        "波尔多这边的人则无所谓，对于他们而言抽中谁都是一样的，反正最后都是要打一场硬仗。",
+    )
+
+    private fun padded() = listOf(
+        "丁松言回到偏院，吃饱了肚子，耐心等到午市结束，才直奔便宜酒垆，在后院找到了罗十二娘。",
+        "“十二娘，你说那两个人若是被五圣宗的人找到，会不会说出便宜酒垆里有高手？”丁松言低声问道。",
+        "罗十二娘上穿空青色圆领短袄，下着松绿色棉布褶裙，比往常少了几分成熟，她只是静静看着丁松言",
+    ) + strangers
+
+    private val reference by lazy { PreviewGuard.reference(listOf(fullChapter(1), fullChapter(2), fullChapter(3)))!! }
+
+    @Test fun paddedChapterIsTrimmedToItsRealOpening() {
+        val r = PreviewGuard.trim(padded().joinToString("\n"), reference)
+        assertTrue(r.trimmed)
+        assertEquals(3, r.keptParagraphs)
+        assertTrue(r.text.endsWith("静静看着丁松言"))
+        assertTrue("乔东阳" !in r.text && "舰艇" !in r.text)
+    }
+
+    @Test fun aLongChapterIsNeverTouched() {
+        // Even if its second half happens to read like padding, a chapter as long as the free ones is left alone.
+        val long = padded().take(3) + (1..9).flatMap { strangers }
+        assertEquals(false, PreviewGuard.trim(long.joinToString("\n"), reference).trimmed)
+        assertEquals(false, PreviewGuard.trim(fullChapter(9), reference).trimmed)
+    }
+
+    @Test fun aShortChapterAboutTheSamePeopleIsNotCut() {
+        val short = (1..14).map { "丁松言走进酒垆，罗十二娘迎了出来，两个人默默对坐了很久，谁也没有先开口说第${it}句话。" }
+        assertEquals(false, PreviewGuard.trim(short.joinToString("\n"), reference).trimmed)
+    }
+
+    @Test fun anOpeningLongerThanTenParagraphsIsNotCut() {
+        val opening = (1..12).map { "丁松言与罗十二娘在便宜酒垆的后院里谈了很多事，说到第${it}件的时候天色已经黑了下来。" }
+        assertEquals(false, PreviewGuard.trim((opening + strangers).joinToString("\n"), reference).trimmed, "cut would be too deep to be a teaser")
+    }
+
+    @Test fun onlyShortChaptersWithManyLongParagraphsAreCandidates() {
+        assertTrue(PreviewGuard.isCandidate(padded().joinToString("\n")))
+        assertEquals(false, PreviewGuard.isCandidate(fullChapter(1)), "a full-length chapter")
+        assertEquals(false, PreviewGuard.isCandidate("第一章\n短短的一章。"), "too little text to judge")
+    }
+
+    @Test fun noReferenceMeansNoCut() {
+        assertEquals(null, PreviewGuard.reference(listOf("")))
+        assertEquals(null, PreviewGuard.reference(listOf("一二三。四五六。")), "too little text for any recurring name")
+    }
 }
