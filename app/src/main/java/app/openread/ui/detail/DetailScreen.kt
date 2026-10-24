@@ -65,10 +65,15 @@ import app.openread.engine.SearchBook
 import app.openread.ui.components.BookCover
 import app.openread.ui.components.factory
 import app.openread.ui.nav.Handoff
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.withTimeoutOrNull
 
 data class DetailState(
     val loading: Boolean = true,
@@ -83,6 +88,9 @@ data class DetailState(
     val message: String? = null,
     /** A source that is several chapters ahead of the one being shown, if the search found one. */
     val fresher: SearchBook? = null,
+    /** Checking whether the newest chapters are really there; and, once known, what to tell the reader. */
+    val checkingLatest: Boolean = false,
+    val latestNote: String? = null,
 )
 
 class DetailViewModel(private val c: AppContainer, private val bookUrl: String) : ViewModel() {
@@ -127,11 +135,48 @@ class DetailViewModel(private val c: AppContainer, private val bookUrl: String) 
             if (ok != null) {
                 val fresher = Freshness.fresherThan(cand, (listOf(hit) + alternates).filter { it.origin != cand.origin })
                 _state.update { it.copy(loading = false, error = null, book = ok.first, chapters = ok.second, switching = false, fresher = fresher, message = if (i > 0) "${hit.originName} 打不开，已换到 ${cand.originName}" else null) }
+                verifyLatest(cand, (listOf(hit) + alternates).filter { it.origin != cand.origin })
                 return
             }
             firstError = firstError ?: "${cand.originName}：${r.exceptionOrNull()?.message ?: "目录为空"}"
         }
         _state.update { it.copy(loading = false, switching = false, error = firstError ?: "打开失败") }
+    }
+
+    /**
+     * The newest chapters should be real text, not a teaser padded with other novels. The opened source is checked; if its newest
+     * chapter is a teaser, the freshest other sources are checked too and the book moves to the one whose newest complete chapter
+     * is furthest on (at least three ahead of the current one). If none is better, the reader is told where the complete text ends.
+     */
+    private fun verifyLatest(current: SearchBook, others: List<SearchBook>) {
+        viewModelScope.launch {
+            _state.update { it.copy(checkingLatest = true, latestNote = null) }
+            val mine = withTimeoutOrNull(90_000) { c.library.checkLatest(current) } ?: withTimeoutOrNull(90_000) { c.library.checkLatest(current) }
+            if (mine == null || mine.complete) { _state.update { it.copy(checkingLatest = false) }; return@launch }
+            // Reprint sites of one book share their padding, so the freshest few are usually all teasers. Sources that stop at different
+            // chapters are the ones worth reading: up to two per distinct newest chapter, from the freshest down.
+            val candidates = Freshness.newestFirst(others.distinctBy { it.origin })
+                .groupBy { it.latestChapterTitle.orEmpty() }.values.take(16).flatMap { it.take(2) }
+            val gate = kotlinx.coroutines.sync.Semaphore(6)
+            val checked = coroutineScope {
+                candidates.map { cand -> async { gate.withPermit { cand to withTimeoutOrNull(90_000) { c.library.checkLatest(cand) } } } }.awaitAll()
+            }
+            // Only a source whose newest chapter is itself complete is worth moving to; one padded at a later chapter is no better.
+            val best = checked.filter { it.second?.complete == true }.maxWithOrNull(compareBy({ it.second!!.completeCount }, { if (it.second!!.complete) 1 else 0 }, { Freshness.of(it.first) }))
+            val better = best?.takeIf { it.second!!.completeCount >= mine.completeCount + 3 }
+            if (better != null && !_state.value.inShelf) {
+                _state.update { it.copy(checkingLatest = false) }
+                switchTo(better.first)
+                _state.update { it.copy(message = "${current.originName} 的最新几章不完整，已换到 ${better.first.originName}（完整到「${better.second!!.completeTitle}」）") }
+            } else {
+                _state.update {
+                    it.copy(
+                        checkingLatest = false,
+                        latestNote = "「${mine.completeTitle}」之后的章节只有开头一小段，其余是别的小说混进来的内容；已核对 ${checked.count { it.second != null } + 1} 个书源，都没有更完整的，完整内容要到原站阅读。",
+                    )
+                }
+            }
+        }
     }
 
     /** Puts the book on the shelf (if it is not already) and returns its key. */
@@ -267,6 +312,19 @@ fun DetailScreen(bookUrl: String, onBack: () -> Unit, onRead: (String, Int?) -> 
                                 headlineContent = { Text("这个书源更新较慢") },
                                 supportingContent = { Text("最新到「${s.chapters.lastOrNull()?.title.orEmpty()}」，${f.originName} 已到「${f.latestChapterTitle.orEmpty()}」", maxLines = 2, overflow = TextOverflow.Ellipsis) },
                                 trailingContent = { TextButton(onClick = vm::switchToFresher) { Text("换过去") } },
+                                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).clip(RoundedCornerShape(12.dp)),
+                            )
+                        }
+                    }
+                    if (s.checkingLatest) item {
+                        Text("正在核对最新章是否完整…", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                    }
+                    s.latestNote?.let { note ->
+                        item {
+                            ListItem(
+                                headlineContent = { Text("最新章不完整") },
+                                supportingContent = { Text(note) },
                                 colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).clip(RoundedCornerShape(12.dp)),
                             )

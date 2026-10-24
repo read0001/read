@@ -1,8 +1,8 @@
 {
-  "versionCode": 10,
-  "versionName": "1.0.9",
-  "notes": "搜索时自动挑有效的源：记住每个书源的表现，快的先搜、连续出错的先跳过一天；进度条现在按所有书源计数。",
-  "url": "https://raw.githubusercontent.com/read0001/read/main/releases/openread-1.0.9.apk",
-  "size": 3211598,
-  "sha256": "a4dae63a96acf332baeaf8f3d8475a10178041e78ced54daec49c051101d5c3f"
+  "versionCode": 11,
+  "versionName": "1.0.10",
+  "notes": "最新章要是完整的：打开书时核对最新章是否被别的小说凑数，是的话自动换到最新章完整的书源（如《剑烛大荒》换到悠悠书盟，完整到第八十四章），没有更好的就在详情页说明。",
+  "url": "https://raw.githubusercontent.com/read0001/read/main/releases/openread-1.0.10.apk",
+  "size": 3227982,
+  "sha256": "3c682e3ab4eb11728b835f010343ab2fe97448020c9194fd76f062f79fabbaab"
 }

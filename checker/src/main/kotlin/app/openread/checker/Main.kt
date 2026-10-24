@@ -94,6 +94,10 @@ internal fun usable(src: BookSource, blocklist: List<String>): String? {
 }
 
 fun main(args: Array<String>) {
+    if (args.firstOrNull() == "latest" && args.size >= 3) {
+        latestReport(args.drop(1), Http(proxy = proxyFromEnv(), timeoutSec = 15))
+        exitProcess(0)
+    }
     if (args.firstOrNull() == "quality" && args.size >= 3) {
         qualityReport(args.drop(1), Http(proxy = proxyFromEnv(), timeoutSec = 15))
         exitProcess(0)

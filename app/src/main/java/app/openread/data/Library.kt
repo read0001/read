@@ -205,6 +205,16 @@ class Library(private val context: Context, private val db: AppDb, private val e
         book to web.chapters(book)
     }
 
+    /** Whether [search]'s newest chapter is complete or a teaser, and the last complete one if not; null when it cannot be told. */
+    suspend fun checkLatest(search: SearchBook): app.openread.engine.LatestCheck.Result? = withContext(Dispatchers.IO) {
+        runCatching {
+            val web = engine.web(search.origin) ?: return@runCatching null
+            val book = Book.from(search)
+            web.bookInfo(book)
+            app.openread.engine.LatestCheck.run(web, book, web.chapters(book))
+        }.getOrNull()
+    }
+
     suspend fun reloadToc(row: BookRow): List<ChapterRow> = withContext(Dispatchers.IO) {
         val web = engine.web(row.origin) ?: error("书源已被删除")
         val book = row.toBook()
