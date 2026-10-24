@@ -71,7 +71,7 @@ class BookGroup(val name: String, val author: String, val hits: MutableList<Sear
     val cover: String? get() = hits.firstNotNullOfOrNull { it.coverUrl }
 }
 
-data class SearchState(val keyword: String = "", val groups: List<BookGroup> = emptyList(), val searching: Boolean = false, val total: Int = 0, val answered: Int = 0, val started: Boolean = false)
+data class SearchState(val keyword: String = "", val groups: List<BookGroup> = emptyList(), val searching: Boolean = false, val total: Int = 0, val answered: Int = 0, val started: Boolean = false, val rested: Int = 0)
 
 class SearchViewModel(private val c: AppContainer) : ViewModel() {
     private val _state = MutableStateFlow(SearchState())
@@ -90,8 +90,11 @@ class SearchViewModel(private val c: AppContainer) : ViewModel() {
             _state.value = SearchState(k, searching = rows.isNotEmpty(), total = rows.size, started = true)
             val index = LinkedHashMap<String, BookGroup>()
             var answered = 0
-            c.engine.search(k, rows).collect { hits ->
+            c.engine.search(k, rows).collect { progress ->
+                if (!progress.counted) { _state.update { it.copy(rested = progress.rested, total = rows.size - progress.rested) }; return@collect }
+                val hits = progress.hits
                 answered++
+                if (hits.isEmpty()) { _state.update { it.copy(answered = answered) }; return@collect }
                 for (h in hits) index.getOrPut(h.name + "\u0000" + h.author) { BookGroup(h.name, h.author, mutableListOf()) }.hits.add(h)
                 // exact title matches first, then by how many sources have the book
                 val sorted = index.values.sortedWith(compareByDescending<BookGroup> { it.name == k }.thenByDescending { it.name.contains(k) }.thenByDescending { it.hits.size })
@@ -151,7 +154,7 @@ fun SearchScreen(initial: String?, onBack: () -> Unit, onOpen: (SearchBook, List
                 else -> LazyColumn(Modifier.fillMaxSize()) {
                     if (state.searching) item {
                         Text(
-                            "已搜 ${state.answered}/${state.total} 个书源，找到 ${state.groups.size} 本",
+                            "已搜 ${state.answered}/${state.total} 个书源，找到 ${state.groups.size} 本" + if (state.rested > 0) "（先跳过 ${state.rested} 个最近总出错的）" else "",
                             style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                         )

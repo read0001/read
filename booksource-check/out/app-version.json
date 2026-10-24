@@ -1,8 +1,8 @@
 {
-  "versionCode": 9,
-  "versionName": "1.0.8",
-  "notes": "书源从 53 个扩到 348 个（来自 150 多个仓库全量检测），新增能读到《剑烛大荒》第 83 章完整正文的书海阁；下载更新支持断点续传和后台下载，完成后通知；更新弹窗按钮排成一行。",
-  "url": "https://raw.githubusercontent.com/read0001/read/main/releases/openread-1.0.8.apk",
+  "versionCode": 10,
+  "versionName": "1.0.9",
+  "notes": "搜索时自动挑有效的源：记住每个书源的表现，快的先搜、连续出错的先跳过一天；进度条现在按所有书源计数。",
+  "url": "https://raw.githubusercontent.com/read0001/read/main/releases/openread-1.0.9.apk",
   "size": 3211598,
-  "sha256": "b5eaa8bc6de249a9f5f19b59eef7b42999b1d045e983c653c4eb1edb6af3a9be"
+  "sha256": "a4dae63a96acf332baeaf8f3d8475a10178041e78ced54daec49c051101d5c3f"
 }

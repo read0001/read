@@ -64,6 +64,18 @@ data class ChapterRow(
     val vars: String,
 )
 
+/** How a source behaved in past searches, so a search can ask the ones that work first and rest the ones that keep failing. */
+@Entity(tableName = "source_health")
+data class SourceHealth(
+    @PrimaryKey val key: String,
+    /** Searches in a row that ended in an error or a timeout. */
+    val failStreak: Int,
+    val lastOkAt: Long,
+    val lastFailAt: Long,
+    /** Smoothed time of the searches that found something. */
+    val avgMs: Long,
+)
+
 @Entity(tableName = "history")
 data class HistoryRow(@PrimaryKey val keyword: String, val at: Long)
 
@@ -165,6 +177,15 @@ interface ChapterDao {
 }
 
 @Dao
+interface HealthDao {
+    @Query("SELECT * FROM source_health")
+    suspend fun all(): List<SourceHealth>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(rows: List<SourceHealth>)
+}
+
+@Dao
 interface HistoryDao {
     @Query("SELECT * FROM history ORDER BY at DESC LIMIT 20")
     fun recent(): Flow<List<HistoryRow>>
@@ -176,10 +197,18 @@ interface HistoryDao {
     suspend fun clear()
 }
 
-@Database(entities = [SourceRow::class, BookRow::class, ChapterRow::class, HistoryRow::class], version = 1, exportSchema = true)
+@Database(entities = [SourceRow::class, BookRow::class, ChapterRow::class, HistoryRow::class, SourceHealth::class], version = 2, exportSchema = true)
 abstract class AppDb : RoomDatabase() {
     abstract fun sources(): SourceDao
     abstract fun books(): BookDao
     abstract fun chapters(): ChapterDao
     abstract fun history(): HistoryDao
+    abstract fun health(): HealthDao
+}
+
+/** 1 → 2 only adds a table; the shelf, chapters and sources are kept. */
+val MIGRATION_1_2 = object : androidx.room.migration.Migration(1, 2) {
+    override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS `source_health` (`key` TEXT NOT NULL, `failStreak` INTEGER NOT NULL, `lastOkAt` INTEGER NOT NULL, `lastFailAt` INTEGER NOT NULL, `avgMs` INTEGER NOT NULL, PRIMARY KEY(`key`))")
+    }
 }

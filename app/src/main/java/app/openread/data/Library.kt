@@ -69,8 +69,15 @@ class SourceRepo(private val dao: SourceDao) {
     suspend fun saveCheck(key: String, r: ProbeResult) = dao.setCheck(key, System.currentTimeMillis(), r.ok, r.totalMs, if (r.ok) "${r.chapters} 章" else "${r.stage}：${r.error}")
 }
 
+class SearchProgress(val hits: List<SearchBook>, val counted: Boolean = true, val rested: Int = 0)
+
+private const val REST_AFTER = 3
+private const val REST_MS = 24 * 3600_000L
+private const val UNKNOWN_MS = 6_000L
+private const val ENOUGH_HITS = 10
+
 /** Talks to the sources: search across many at once, open one book, run the health probe. */
-class Engine(val http: Http, private val sources: SourceRepo) {
+class Engine(val http: Http, private val sources: SourceRepo, private val health: HealthDao) {
     fun web(row: SourceRow): WebBook? = sources.parse(row)?.let { WebBook(it, http) }
 
     suspend fun web(key: String): WebBook? = sources.get(key)?.let(::web)
@@ -80,17 +87,57 @@ class Engine(val http: Http, private val sources: SourceRepo) {
      * the timeout works by walking away from it: the work carries on in [abandoned] while this search moves on and gives
      * its slot to the next source. Without that, a few hung sites would use up every slot and stall the whole search.
      */
-    fun search(keyword: String, rows: List<SourceRow>, timeoutMs: Long = 25_000): Flow<List<SearchBook>> = channelFlow {
-        val gate = Semaphore(16)
-        rows.forEach { row ->
-            launch(Dispatchers.IO) {
-                gate.withPermit {
-                    val work = abandoned.async { runCatching { web(row)?.search(keyword) }.getOrNull() }
-                    val hits = withTimeoutOrNull(timeoutMs) { work.await() }
-                    if (hits == null) work.cancel()
-                    if (!hits.isNullOrEmpty()) send(hits)
+    fun search(keyword: String, rows: List<SourceRow>, timeoutMs: Long = 20_000): Flow<SearchProgress> = channelFlow {
+        val now = System.currentTimeMillis()
+        val past = health.all().associateBy { it.key }
+        // A source that failed three searches in a row is left out for a day; it is asked again only if the rest found little.
+        val (rested, active) = rows.partition { r -> past[r.key]?.let { it.failStreak >= REST_AFTER && now - it.lastFailAt < REST_MS } == true }
+        // Sources that proved fast go first, so the first results arrive quickly; unknown ones sit in the middle.
+        val ordered = active.sortedBy { r -> past[r.key]?.takeIf { it.lastOkAt > 0 }?.avgMs ?: UNKNOWN_MS }
+        if (rested.isNotEmpty()) send(SearchProgress(emptyList(), counted = false, rested = rested.size))
+        val learned = ConcurrentHashMap<String, SourceHealth>()
+        val reachable = java.util.concurrent.atomic.AtomicBoolean(false)
+        val found = java.util.concurrent.atomic.AtomicInteger(0)
+        suspend fun wave(list: List<SourceRow>) {
+            val gate = Semaphore(16)
+            kotlinx.coroutines.coroutineScope {
+                list.forEach { row ->
+                    launch(Dispatchers.IO) {
+                        gate.withPermit {
+                            val t0 = System.currentTimeMillis()
+                            val work = abandoned.async { runCatching { web(row)?.search(keyword) } }
+                            val outcome = withTimeoutOrNull(timeoutMs) { work.await() }
+                            if (outcome == null) work.cancel()
+                            val hits = outcome?.getOrNull().orEmpty()
+                            val old = past[row.key]
+                            when {
+                                // An answer, even an empty one, proves the network is up.
+                                outcome != null && outcome.isSuccess -> {
+                                    reachable.set(true)
+                                    if (hits.isNotEmpty()) {
+                                        val ms = System.currentTimeMillis() - t0
+                                        learned[row.key] = SourceHealth(row.key, 0, System.currentTimeMillis(), old?.lastFailAt ?: 0, old?.avgMs?.takeIf { it > 0 }?.let { (it * 2 + ms) / 3 } ?: ms)
+                                    }
+                                }
+                                else -> learned[row.key] = SourceHealth(row.key, (old?.failStreak ?: 0) + 1, old?.lastOkAt ?: 0, System.currentTimeMillis(), old?.avgMs ?: 0)
+                            }
+                            if (hits.isNotEmpty()) found.addAndGet(hits.size)
+                            send(SearchProgress(hits))
+                        }
+                    }
                 }
             }
+        }
+        try {
+            wave(ordered)
+            if (found.get() < ENOUGH_HITS && rested.isNotEmpty()) {
+                send(SearchProgress(emptyList(), counted = false, rested = 0)) // asking them after all
+                wave(rested)
+            }
+        } finally {
+            // Failures only count when something else answered: with no network every source "fails" and none should be rested.
+            val rows2 = learned.values.filter { it.failStreak == 0 || reachable.get() }
+            if (rows2.isNotEmpty()) kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) { health.upsert(rows2) }
         }
     }
 
@@ -244,8 +291,8 @@ class Library(private val context: Context, private val db: AppDb, private val e
     suspend fun alternatives(row: BookRow): List<SearchBook> = coroutineScope {
         val rows = sources.enabled().filter { it.key != row.origin }
         val found = ArrayList<SearchBook>()
-        engine.search(row.name, rows, 20_000).collect { hits ->
-            hits.filter { it.name == row.name && (row.author.isBlank() || it.author.isBlank() || it.author == row.author) }
+        engine.search(row.name, rows, 20_000).collect { progress ->
+            progress.hits.filter { it.name == row.name && (row.author.isBlank() || it.author.isBlank() || it.author == row.author) }
                 .firstOrNull()?.let { found.add(it) }
         }
         Freshness.newestFirst(found)
