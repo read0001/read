@@ -25,18 +25,6 @@
 - `booksource-check/blocklist.txt` 里的关键字（成人向站点等）对应的书源不检测、不发布。
 - 一个书源都没通过时，`checker` 以退出码 1 结束，不改动已发布的文件。
 
-**签名**：订阅文件经过公共 GitHub 镜像分发，任何一个镜像被动手脚都会把带脚本的书源塞进用户手机。所以 `checker` 用 ECDSA P-256 给 `booksources.json` 签名（写出 `booksources.json.sig`），App 内置公钥，只接受验签通过的副本（同一镜像上的 `.sig` 与内容一起验）。
-一次性设置：
-
-```bash
-./gradlew :checker:run --args="keygen"                    # 打印 PUBLIC_KEY / PRIVATE_KEY
-gh secret set SOURCES_SIGNING_KEY --repo read0001/read     # 粘贴 PRIVATE_KEY；私钥不要进仓库
-# 把 PUBLIC_KEY 写进 app/build.gradle.kts 的 subscriptionPublicKey（或 -PsubscriptionPublicKey=…）
-OPENREAD_SIGNING_KEY=<PRIVATE_KEY> ./gradlew :checker:run --args="sign booksource-check/out/booksources.json"   # 手动签一次
-```
-
-没有设置 `SOURCES_SIGNING_KEY` 时 CI 会直接报错，不发布未签名的文件。用户在设置里改成自己的订阅地址时不做签名校验。
-
 订阅地址（默认）：
 
 ```
@@ -75,6 +63,10 @@ https://raw.githubusercontent.com/read0001/read/main/booksource-check/out/bookso
 ```
 
 订阅仓库可以用 `-PsubscriptionRepo=owner/repo -PsubscriptionBranch=main` 改。
+
+## 安全说明
+
+和 `../tv` 一样，订阅文件走公共 GitHub 镜像，对镜像返回的内容不做签名校验。书源里的 JS 在引擎的类白名单沙箱里运行（碰不到文件、进程、反射和 Android 框架），但仍然只应该订阅可信的地址。设置里可以改成自己的订阅目录。
 
 ## 已知限制
 

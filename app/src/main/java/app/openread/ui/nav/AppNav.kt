@@ -1,6 +1,7 @@
 package app.openread.ui.nav
 
 import android.net.Uri
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoStories
@@ -95,6 +96,7 @@ private fun MainTabs(
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             NavigationBar {
                 tabs.forEachIndexed { i, t ->

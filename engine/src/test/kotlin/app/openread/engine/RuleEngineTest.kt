@@ -141,38 +141,4 @@ class RuleEngineTest {
         assertEquals("我 < 你，你 > 我", HtmlFormatter.format("我 < 你，你 > 我"))
         assertEquals("a\nb", HtmlFormatter.format("a<br>b"))
     }
-
-    @Test fun signatureRoundTripAndTamperDetection() {
-        val k = Signing.generate()
-        val data = "[{\"bookSourceUrl\":\"https://e.com\"}]".toByteArray()
-        val sig = Signing.sign(k.privateKey, data)
-        assertTrue(Signing.verify(k.publicKey, data, sig))
-        assertTrue(!Signing.verify(k.publicKey, data + 1, sig), "altered content must not verify")
-        assertTrue(!Signing.verify(Signing.generate().publicKey, data, sig), "another key must not verify")
-        assertTrue(!Signing.verify(k.publicKey, data, "not base64!!"))
-    }
-
-    @Test fun subscriptionFetchRejectsUnsignedOrTamperedContent() {
-        val k = Signing.generate()
-        val good = "[{\"bookSourceUrl\":\"https://e.com\",\"bookSourceName\":\"t\"}]"
-        val sig = Signing.sign(k.privateKey, good.toByteArray())
-        val server = com.sun.net.httpserver.HttpServer.create(java.net.InetSocketAddress("127.0.0.1", 0), 0)
-        fun serve(path: String, body: String) = server.createContext(path) { ex ->
-            val b = body.toByteArray(); ex.sendResponseHeaders(200, b.size.toLong()); ex.responseBody.use { it.write(b) }
-        }
-        serve("/good.json", good); serve("/good.json.sig", sig)
-        serve("/evil.json", good.replace("t\"", "evil\"")); serve("/evil.json.sig", sig)   // content altered, signature of the original
-        server.start()
-        try {
-            val base = "http://127.0.0.1:${server.address.port}"
-            val verify = { body: String, from: String ->
-                val s = http.execute("$from.sig")
-                Signing.verify(k.publicKey, body.toByteArray(), s.body)
-            }
-            val ok = kotlinx.coroutines.runBlocking { Mirrors.fetch(http, "$base/good.json", verify) }
-            assertEquals(good, ok.body)
-            val bad = runCatching { kotlinx.coroutines.runBlocking { Mirrors.fetch(http, "$base/evil.json", verify) } }
-            assertTrue(bad.isFailure, "a copy that does not match its signature must be rejected")
-        } finally { server.stop(0) }
-    }
 }

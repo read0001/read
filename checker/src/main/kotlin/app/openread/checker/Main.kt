@@ -93,19 +93,6 @@ private fun usable(src: BookSource, blocklist: List<String>): String? {
 }
 
 fun main(args: Array<String>) {
-    if (args.firstOrNull() == "keygen") {
-        val k = app.openread.engine.Signing.generate()
-        println("PUBLIC_KEY=${k.publicKey}")
-        println("PRIVATE_KEY=${k.privateKey}")
-        exitProcess(0)
-    }
-    if (args.firstOrNull() == "sign" && args.size >= 2) {
-        val key = System.getenv("OPENREAD_SIGNING_KEY")?.takeIf { it.isNotBlank() } ?: run { System.err.println("OPENREAD_SIGNING_KEY is not set"); exitProcess(2) }
-        val f = File(args[1])
-        File(f.path + ".sig").writeText(app.openread.engine.Signing.sign(key, f.readBytes()) + "\n")
-        println("wrote ${f.path}.sig")
-        exitProcess(0)
-    }
     if (args.firstOrNull() == "debug" && args.size >= 3) {
         debugSource(args.drop(1), Http(proxy = proxyFromEnv(), timeoutSec = 20))
         exitProcess(0)
@@ -199,13 +186,7 @@ fun main(args: Array<String>) {
             JsonObject(src.raw + mapOf("enabled" to JsonPrimitive(true)))
         },
     )
-    val published = JsonCodec.pretty.encodeToString(JsonElement.serializer(), array) + "\n"
-    publishedFile.writeText(published)
-    // The app verifies this signature, so mirrors that serve altered copies are rejected.
-    System.getenv("OPENREAD_SIGNING_KEY")?.takeIf { it.isNotBlank() }?.let { key ->
-        File(o.out, "booksources.json.sig").writeText(app.openread.engine.Signing.sign(key, published.toByteArray()) + "\n")
-        println("signed booksources.json")
-    } ?: System.err.println("OPENREAD_SIGNING_KEY is not set: booksources.json.sig was not written")
+    publishedFile.writeText(JsonCodec.pretty.encodeToString(JsonElement.serializer(), array) + "\n")
     stateFile.writeText(JsonCodec.pretty.encodeToString(JsonElement.serializer(), buildJsonObject {
         put("sources", JsonObject(fails.filterKeys { k -> finalList.any { it.key == k } || fails[k]!! > 0 && k in prevKeys }.mapValues { JsonPrimitive(it.value) }))
     }) + "\n")

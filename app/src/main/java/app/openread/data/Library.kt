@@ -12,8 +12,6 @@ import app.openread.engine.Probe
 import app.openread.engine.ProbeResult
 import app.openread.engine.RuleData
 import app.openread.engine.SearchBook
-import app.openread.engine.Signing
-import app.openread.BuildConfig
 import app.openread.engine.WebBook
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -258,10 +256,7 @@ class SubscriptionUpdater(private val context: Context, private val prefs: Prefs
 
     suspend fun update(): Outcome = withContext(Dispatchers.IO) {
         val base = prefs.current().subscriptionBase.trim().let { if (it.endsWith("/")) it else "$it/" }
-        prefsBaseIsCustom = base != Settings.DEFAULT_BASE
-        val resp = runCatching {
-            Mirrors.fetch(http, base + "booksources.json", verify = signatureCheck(), valid = { BookSource.parseList(it).isNotEmpty() })
-        }
+        val resp = runCatching { Mirrors.fetch(http, base + "booksources.json") { BookSource.parseList(it).isNotEmpty() } }
             .getOrElse { return@withContext Outcome(false, "下载失败：${it.message ?: it.javaClass.simpleName}") }
         val list = BookSource.parseList(resp.body)
         if (list.isEmpty()) return@withContext Outcome(false, "订阅里没有可用的书源")
@@ -269,22 +264,6 @@ class SubscriptionUpdater(private val context: Context, private val prefs: Prefs
         prefs.update { it.copy(lastSubscriptionUpdate = System.currentTimeMillis()) }
         Outcome(true, "已更新 ${list.size} 个书源")
     }
-
-    /**
-     * With a public key built in, a copy only counts when the `.sig` served next to it, from the same address, verifies.
-     * Without one (a self-hosted subscription) nothing is checked.
-     */
-    private fun signatureCheck(): ((String, String) -> Boolean)? {
-        val key = BuildConfig.SUBSCRIPTION_PUBKEY
-        if (key.isBlank() || prefsBaseIsCustom) return null
-        return { body, from ->
-            val sig = runCatching { http.execute("$from.sig", retry = 1) }.getOrNull()
-            sig != null && sig.code == 200 && Signing.verify(key, body.toByteArray(), sig.body)
-        }
-    }
-
-    /** A subscription address the user typed in is theirs to trust; only the built-in default is signature-checked. */
-    private var prefsBaseIsCustom = false
 
     companion object {
         const val STALE_MS = 12 * 3600_000L

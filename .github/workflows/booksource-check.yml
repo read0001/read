@@ -26,18 +26,7 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Require the signing key
-        env:
-          OPENREAD_SIGNING_KEY: ${{ secrets.SOURCES_SIGNING_KEY }}
-        run: |
-          if [ -z "$OPENREAD_SIGNING_KEY" ]; then
-            echo "::error::Repository secret SOURCES_SIGNING_KEY is not set. The app only accepts a signed booksources.json, so publishing without it would freeze every phone's source list."
-            exit 1
-          fi
-
       - name: Probe sources
-        env:
-          OPENREAD_SIGNING_KEY: ${{ secrets.SOURCES_SIGNING_KEY }}
         run: >
           ./gradlew :checker:run --no-daemon --console=plain
           --args="$GITHUB_WORKSPACE/booksource-check/candidates.tsv $GITHUB_WORKSPACE/booksource-check/out --concurrency 16 --no-proxy"
@@ -46,7 +35,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add booksource-check/out/booksources.json booksource-check/out/booksources.json.sig booksource-check/out/state.json
+          git add booksource-check/out/booksources.json booksource-check/out/state.json
           if git diff --cached --quiet; then
             echo "No change in the published sources"
           else

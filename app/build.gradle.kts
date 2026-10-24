@@ -10,8 +10,6 @@ plugins {
 // Override with -PsubscriptionRepo=owner/repo -PsubscriptionBranch=main if the repository moves.
 val subscriptionRepo = (project.findProperty("subscriptionRepo") as String?) ?: "read0001/read"
 val subscriptionBranch = (project.findProperty("subscriptionBranch") as String?) ?: "main"
-// ECDSA public key (Base64, X.509) that signs booksources.json. Empty disables verification.
-val subscriptionPublicKey = (project.findProperty("subscriptionPublicKey") as String?) ?: "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEQLp/l+LiUepkjeb1ROObYYPTHdKfnRCxN9nGamfbE8jibM0oKRnKPGCtIzkz1WMlVfpcFWdLOiruQ+Ibso7XfA=="
 
 android {
     namespace = "app.openread"
@@ -25,7 +23,6 @@ android {
         versionName = "1.0.0"
         buildConfigField("String", "SUBSCRIPTION_REPO", "\"$subscriptionRepo\"")
         buildConfigField("String", "SUBSCRIPTION_BRANCH", "\"$subscriptionBranch\"")
-        buildConfigField("String", "SUBSCRIPTION_PUBKEY", "\"$subscriptionPublicKey\"")
     }
 
     signingConfigs {

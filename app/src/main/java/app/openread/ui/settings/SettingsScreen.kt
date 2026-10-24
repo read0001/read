@@ -1,5 +1,6 @@
 package app.openread.ui.settings
 
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -48,7 +49,7 @@ fun SettingsScreen() {
     var base by remember(s.subscriptionBase) { mutableStateOf(s.subscriptionBase) }
     var status by remember { mutableStateOf<String?>(null) }
 
-    Scaffold(topBar = { CenterAlignedTopAppBar(title = { Text("设置") }) }) { pad ->
+    Scaffold(contentWindowInsets = WindowInsets(0, 0, 0, 0), topBar = { CenterAlignedTopAppBar(title = { Text("设置") }) }) { pad ->
         Column(Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState())) {
             Section("外观")
             Column(Modifier.selectableGroup()) {

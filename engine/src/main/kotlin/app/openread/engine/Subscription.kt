@@ -34,29 +34,12 @@ object Mirrors {
      * Asks every mirror at once. The first answer that passes [valid] wins, but GitHub's own copy is preferred when it
      * arrives within a short grace period, since a mirror can serve an old copy for hours.
      */
-    suspend fun fetch(
-        http: Http,
-        url: String,
-        /** Extra check on a mirror's answer, given its body and the address it came from; the signature check lives here. */
-        verify: ((body: String, from: String) -> Boolean)? = null,
-        valid: (String) -> Boolean = { it.isNotBlank() },
-    ): StrResponse {
+    suspend fun fetch(http: Http, url: String, valid: (String) -> Boolean = { it.isNotBlank() }): StrResponse {
         val urls = of(url)
-        if (urls.size == 1) {
-            val r = http.execute(url, retry = 1)
-            if (verify != null && !verify(r.body, url)) throw HttpException("签名校验失败")
-            return r
-        }
+        if (urls.size == 1) return http.execute(url, retry = 1)
         val raw = urls.indexOfFirst { it.startsWith(RAW) }
         val answers = Channel<Pair<Int, Result<StrResponse>>>(urls.size)
-        val jobs = urls.mapIndexed { i, u ->
-            scope.launch {
-                val r = runCatching {
-                    http.execute(u, retry = 1).also { if (verify != null && it.code == 200 && !verify(it.body, u)) throw HttpException("签名校验失败") }
-                }
-                answers.send(i to r)
-            }
-        }
+        val jobs = urls.mapIndexed { i, u -> scope.launch { answers.send(i to runCatching { http.execute(u, retry = 1) }) } }
         var chosen: StrResponse? = null
         var failure: Throwable? = null
         var answered = 0
