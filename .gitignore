@@ -1,0 +1,16 @@
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.DS_Store
+.codegraph/
+.kotlin/
+captures/
+*.keystore
+*.jks
+booksource-check/work/
+app/schemas/
+booksource-check/out/results.json
+*.apk
+!releases/*.apk

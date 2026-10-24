@@ -1,0 +1,21 @@
+# Rhino (source JS), JsoupXpath's antlr runtime and json-path/json-smart are used reflectively.
+-keep class org.mozilla.javascript.** { *; }
+-dontwarn org.mozilla.javascript.**
+-keep class app.openread.engine.** { *; }
+-keep class org.seimicrawler.xpath.** { *; }
+-keep class org.antlr.v4.runtime.** { *; }
+-dontwarn org.antlr.**
+-keep class net.minidev.json.** { *; }
+-dontwarn net.minidev.**
+-dontwarn com.jayway.jsonpath.**
+-dontwarn org.slf4j.**
+-dontwarn org.jspecify.**
+-dontwarn java.beans.**
+-dontwarn javax.script.**
+-dontwarn org.apache.xmlbeans.**
+-dontwarn org.w3c.dom.**
+-dontwarn org.xml.sax.**
+-dontwarn javax.xml.**
+-dontwarn org.openjsse.**
+-dontwarn org.bouncycastle.**
+-dontwarn org.conscrypt.**

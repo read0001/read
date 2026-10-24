@@ -1,0 +1,7 @@
+# name<TAB>url — each URL is a JSON file holding one Legado book source or an array of them.
+# Lines starting with # are ignored. GitHub raw URLs are fetched through several mirrors at once.
+XIU2 精品书源	https://raw.githubusercontent.com/XIU2/Yuedu/master/shuyuan
+aoaostar 破冰书源	https://raw.githubusercontent.com/aoaostar/legado/release/sources/4dc410d1.json
+aoaostar 关耳女频	https://raw.githubusercontent.com/aoaostar/legado/release/sources/e3e5d620.json
+aoaostar 三舞313	https://raw.githubusercontent.com/aoaostar/legado/release/sources/2a1f129b.json
+cjj200011222 合集	https://raw.githubusercontent.com/cjj200011222/legado-booksource/master/all.json
