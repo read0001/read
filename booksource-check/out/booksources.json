@@ -2636,53 +2636,6 @@
     "weight": 0
   },
   {
-    "bookSourceGroup": "源论坛",
-    "bookSourceName": "看书网",
-    "bookSourceType": 0,
-    "bookSourceUrl": "https://www.kanshuw.com",
-    "customButton": false,
-    "customOrder": 10,
-    "enabled": true,
-    "enabledCookieJar": true,
-    "enabledExplore": true,
-    "eventListener": false,
-    "lastUpdateTime": 1733932666780,
-    "respondTime": 3634,
-    "ruleBookInfo": {
-      "author": "class.row book_info@a[0]@text",
-      "coverUrl": "class.row book_info@img@src",
-      "init": "",
-      "intro": "class.row book_info@id.intro_pc@oweText",
-      "kind": "class.title@a[1]@text",
-      "lastChapter": "class.row book_info@a[2]@text",
-      "name": "class.row book_info@h1@text##免费阅读.*",
-      "tocUrl": ""
-    },
-    "ruleContent": {
-      "content": ".font_max@html##第\\(\\d+/\\d+\\)页",
-      "nextContentUrl": "text.下一章@href",
-      "replaceRegex": "##[a-zA-Z0-9-]+[a-zA-Z0-9-].*\\.[a-zA-Z0-9-].*"
-    },
-    "ruleSearch": {
-      "author": "span@text",
-      "bookList": ".row@dl",
-      "bookUrl": "a[0]@href",
-      "checkKeyWord": "我的",
-      "coverUrl": "tag.dt@tag.a@img@src",
-      "kind": "h3@text##\\[|\\].*",
-      "lastChapter": "a[-1]@text",
-      "name": "h3@text##\\[|.*\\]|免费阅读.*"
-    },
-    "ruleToc": {
-      "chapterList": ".row[-1]@a",
-      "chapterName": "text",
-      "chapterUrl": "href",
-      "nextTocUrl": "class.pages@tag.ul@tag.li.!0:1:-1@tag.a@href"
-    },
-    "searchUrl": "/search.php?q={{key}}",
-    "weight": 0
-  },
-  {
     "bookSourceGroup": "自写0625",
     "bookSourceName": "开心文学网",
     "bookSourceType": 0,
