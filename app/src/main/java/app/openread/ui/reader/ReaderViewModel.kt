@@ -8,16 +8,22 @@ import app.openread.AppContainer
 import app.openread.data.BookRow
 import app.openread.data.ChapterRow
 import app.openread.data.Settings
+import app.openread.data.SwitchOffer
+import app.openread.data.betterLine
+import app.openread.data.truncatedNote
 import app.openread.engine.SearchBook
 import app.openread.tts.ReadAloud
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 sealed interface ChapterText {
     data object Loading : ChapterText
@@ -36,6 +42,8 @@ data class ReaderState(
     val error: String? = null,
     val message: String? = null,
     val busy: Boolean = false,
+    /** Set when checking the sources found a clearly better one: the reader is asked whether to move there. */
+    val offer: SwitchOffer? = null,
 )
 
 class ReaderViewModel(private val c: AppContainer, bookUrl: String, private val startIndex: Int?) : ViewModel() {
@@ -134,13 +142,30 @@ class ReaderViewModel(private val c: AppContainer, bookUrl: String, private val 
 
     fun reload(idx: Int) = ensure(idx, force = true)
 
-    /** The listen button: pauses or resumes the session when it is this chapter, otherwise starts reading from the current page. */
+    /** The first text on screen: character [char] of paragraph [paragraph] of chapter [index]. */
+    class Visible(val index: Int, val paragraph: Int, val char: Int)
+
+    @Volatile private var visible: Visible? = null
+
+    /** The page or scroll position changed: this is now the first text the reader sees. */
+    fun noteVisible(index: Int, paragraph: Int, char: Int) {
+        visible = Visible(index, paragraph, char)
+    }
+
+    /**
+     * The listen button. While a session for this book exists (reading or paused) it pauses or resumes it, and the session
+     * already follows the page the reader is on; otherwise reading starts from the first text on screen.
+     */
     fun readAloud(context: Context) {
         val s = _state.value
         val book = s.book ?: return
         val ra = ReadAloud.state.value
-        if (ra.active && ra.bookUrl == book.bookUrl && ra.chapterIndex == s.position.index) ReadAloud.toggle()
-        else ReadAloud.play(context, c, book.bookUrl, s.chapters, s.position.index, s.position.offset, settings.value.readAloudRate)
+        if (ra.active && ra.bookUrl == book.bookUrl) {
+            ReadAloud.toggle()
+            return
+        }
+        val at = visible?.takeIf { it.index == s.position.index } ?: Visible(s.position.index, 0, 0)
+        ReadAloud.play(context, c, book.bookUrl, s.chapters, at.index, at.paragraph, at.char, settings.value.readAloudRate)
     }
 
     fun consumeMessage() = _state.update { it.copy(message = null) }
@@ -168,10 +193,11 @@ class ReaderViewModel(private val c: AppContainer, bookUrl: String, private val 
 
     // ---- changing source -----------------------------------------------------------------------------------------
 
-    /** Other sources with this book, for the manual picker. */
-    suspend fun alternatives(): List<SearchBook> = _state.value.book?.let { c.library.alternatives(it) }.orEmpty()
+    /** Other sources with this book, for the manual picker; the list grows as sources answer. */
+    fun alternatives(): Flow<List<SearchBook>> = _state.value.book?.let { c.library.alternativesFlow(it) } ?: emptyFlow()
 
-    fun switchTo(target: SearchBook, auto: Boolean = false) {
+    /** [others] are the sources the picker found; once moved, the new source is checked against them (see [checkLatest]). */
+    fun switchTo(target: SearchBook, auto: Boolean = false, others: List<SearchBook> = emptyList()) {
         val row = _state.value.book ?: return
         viewModelScope.launch {
             _state.update { it.copy(busy = true) }
@@ -184,10 +210,46 @@ class ReaderViewModel(private val c: AppContainer, bookUrl: String, private val 
                     val p = Position(fresh.chapterIndex, fresh.chapterOffset)
                     _state.update { it.copy(book = fresh, chapters = chapters, position = p, busy = false, message = (if (auto) "已自动换源到 " else "已换到 ") + target.originName) }
                     prefetch(p.index)
+                    checkLatest(target, fresh.bookUrl, others.filter { it.origin != target.origin })
                 }
                 .onFailure { e -> _state.update { it.copy(busy = false, message = "换源失败：${e.message}") } }
         }
     }
+
+    private var checkJob: Job? = null
+    private var lastOthers: List<SearchBook> = emptyList()
+
+    /**
+     * The source the book was just moved to may end in teasers padded with other novels (see LatestCheck), so its newest
+     * chapters are checked now, in the background. If they are teasers, the other sources are checked too and, when one is
+     * clearly better, the reader is asked whether to move there; nothing is switched without their yes.
+     */
+    private fun checkLatest(target: SearchBook, url: String, others: List<SearchBook>) {
+        checkJob?.cancel()
+        lastOthers = others
+        checkJob = viewModelScope.launch {
+            val mine = withTimeoutOrNull(90_000) { c.library.checkLatest(target) } ?: return@launch
+            if (mine.complete || currentUrl != url) return@launch // the reader may have moved on to yet another source meanwhile
+            val found = if (others.isEmpty()) null else c.library.findCompleteSource(mine, others) { _, _ -> }
+            if (currentUrl != url) return@launch
+            val better = found?.better
+            _state.update {
+                when {
+                    better != null -> it.copy(offer = SwitchOffer(better.source, truncatedNote(target, mine) + betterLine(better) + "\n\n要切换过去吗？"))
+                    found == null -> it.copy(message = truncatedNote(target, mine) + "可以再换个书源。")
+                    else -> it.copy(message = truncatedNote(target, mine) + "已核对 ${found.checked} 个其他书源，没有更完整的。")
+                }
+            }
+        }
+    }
+
+    fun acceptOffer() {
+        val o = _state.value.offer ?: return
+        _state.update { it.copy(offer = null) }
+        switchTo(o.target, others = lastOthers)
+    }
+
+    fun dismissOffer() = _state.update { it.copy(offer = null) }
 
     /** A chapter would not load: once per reading session, quietly look for the same book elsewhere. */
     private fun autoSwitch() {
@@ -199,7 +261,7 @@ class ReaderViewModel(private val c: AppContainer, bookUrl: String, private val 
             val candidates = runCatching { c.library.alternatives(row) }.getOrDefault(emptyList())
             if (candidates.isEmpty()) { _state.update { it.copy(busy = false, message = "没有找到可换的书源") }; return@launch }
             _state.update { it.copy(busy = false) }
-            switchTo(candidates.first(), auto = true)
+            switchTo(candidates.first(), auto = true, others = candidates.drop(1))
         }
     }
 }

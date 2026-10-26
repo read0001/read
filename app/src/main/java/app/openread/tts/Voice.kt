@@ -1,7 +1,7 @@
 package app.openread.tts
 
-/** A stretch of text a [Voice] reads in one go, tagged with the paragraph of the chapter it comes from. */
-class Piece(val text: String, val paragraph: Int)
+/** A stretch of text a [Voice] reads in one go: characters [from] until [to] of paragraph [paragraph] of the chapter. */
+class Piece(val text: String, val paragraph: Int, val from: Int, val to: Int)
 
 sealed interface Spoken {
     data object Done : Spoken

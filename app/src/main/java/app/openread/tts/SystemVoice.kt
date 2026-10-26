@@ -23,9 +23,15 @@ class SystemVoice(private val context: Context, private var rate: Float) : Voice
     @Volatile private var started = false
     @Volatile private var errorCode: Int? = null
 
+    /** Number of the current [speak] call; utterance ids carry it so a late callback from a stopped one is ignored. */
+    @Volatile private var generation = 0
+
     override suspend fun speak(pieces: List<Piece>, onStart: (Piece) -> Unit): Spoken {
         if (pieces.isEmpty()) return Spoken.Done
         val t = engine() ?: return Spoken.Failed(problem)
+        // First retire the previous call's utterance ids, only then replace the queue they index: a late callback must not
+        // find the new queue under an old id.
+        val gen = ++generation
         val done = CompletableDeferred<Unit>()
         finished = done
         queue = pieces
@@ -34,7 +40,7 @@ class SystemVoice(private val context: Context, private var rate: Float) : Voice
         errorCode = null
         for (i in pieces.indices) {
             val mode = if (i == 0) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
-            if (t.speak(pieces[i].text, mode, null, i.toString()) == TextToSpeech.ERROR && i == 0) {
+            if (t.speak(pieces[i].text, mode, null, "$gen:$i") == TextToSpeech.ERROR && i == 0) {
                 return Spoken.Failed("语音引擎拒绝了朗读，请在系统设置的语音输出里换一个引擎试试")
             }
         }
@@ -95,12 +101,13 @@ class SystemVoice(private val context: Context, private var rate: Float) : Voice
 
     private val listener = object : UtteranceProgressListener() {
         override fun onStart(utteranceId: String?) {
-            val piece = utteranceId?.toIntOrNull()?.let { queue.getOrNull(it) } ?: return
+            val piece = indexOf(utteranceId)?.let { queue.getOrNull(it) } ?: return
             started = true
             onStart(piece)
         }
 
         override fun onDone(utteranceId: String?) {
+            if (indexOf(utteranceId) == null) return
             started = true // an engine that skips onStart has still spoken if it reports being done
             ended(utteranceId, null)
         }
@@ -112,9 +119,17 @@ class SystemVoice(private val context: Context, private var rate: Float) : Voice
     }
 
     private fun ended(utteranceId: String?, error: Int?) {
+        val index = indexOf(utteranceId) ?: return
         if (error != null) errorCode = error
-        val last = utteranceId?.toIntOrNull() == queue.lastIndex
+        val last = index == queue.lastIndex
         // An error before anything was heard means the engine can't speak at all; no point waiting for the rest.
         if (last || (error != null && !started)) finished?.complete(Unit)
+    }
+
+    /** The position in [queue] an utterance id stands for, or null for an id from an earlier [speak] call. */
+    private fun indexOf(utteranceId: String?): Int? {
+        val parts = utteranceId?.split(":") ?: return null
+        if (parts.getOrNull(0)?.toIntOrNull() != generation) return null
+        return parts.getOrNull(1)?.toIntOrNull()
     }
 }

@@ -17,9 +17,12 @@ import app.openread.engine.SearchBook
 import app.openread.engine.WebBook
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.lastOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
@@ -71,10 +74,27 @@ class SourceRepo(private val dao: SourceDao) {
 
 class SearchProgress(val hits: List<SearchBook>, val counted: Boolean = true, val rested: Int = 0)
 
+/** A source whose newest chapter is complete, found while checking others against one whose newest chapters are padding. */
+class BetterSource(val source: SearchBook, val result: app.openread.engine.LatestCheck.Result)
+
+/** What the reader is asked once a better source has been found: [message] says why, [target] is where to go. */
+class SwitchOffer(val target: SearchBook, val message: String)
+
+/** What to tell the reader about a source whose newest chapters are padding with other novels. */
+fun truncatedNote(current: SearchBook, mine: app.openread.engine.LatestCheck.Result) =
+    "「${current.originName}」的最新几章不完整（完整到「${mine.completeTitle}」，之后是别的小说混进来的内容）。"
+
+/** The sentence about the source that is better. */
+fun betterLine(better: BetterSource) = "「${better.source.originName}」的最新章是完整的，到「${better.result.completeTitle}」。"
+
+/** The outcome of checking other sources: the best one that is clearly better (or null), and how many could be checked at all. */
+class OthersChecked(val better: BetterSource?, val checked: Int)
+
 private const val REST_AFTER = 3
 private const val REST_MS = 24 * 3600_000L
 private const val UNKNOWN_MS = 6_000L
 private const val ENOUGH_HITS = 10
+private const val LATEST_CHECK_TTL_MS = 3600_000L
 
 /** Talks to the sources: search across many at once, open one book, run the health probe. */
 class Engine(val http: Http, private val sources: SourceRepo, private val health: HealthDao) {
@@ -210,14 +230,49 @@ class Library(private val context: Context, private val db: AppDb, private val e
         book to web.chapters(book)
     }
 
+    /** Checks of the newest chapter by book address, kept for an hour: reopening the page, or switching source, must not redo them. */
+    private val latestChecks = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, app.openread.engine.LatestCheck.Result>>()
+
     /** Whether [search]'s newest chapter is complete or a teaser, and the last complete one if not; null when it cannot be told. */
     suspend fun checkLatest(search: SearchBook): app.openread.engine.LatestCheck.Result? = withContext(Dispatchers.IO) {
+        val key = search.origin + "\u0000" + search.bookUrl
+        latestChecks[key]?.takeIf { System.currentTimeMillis() - it.first < LATEST_CHECK_TTL_MS }?.let { return@withContext it.second }
         runCatching {
             val web = engine.web(search.origin) ?: return@runCatching null
             val book = Book.from(search)
             web.bookInfo(book)
             app.openread.engine.LatestCheck.run(web, book, web.chapters(book))
-        }.getOrNull()
+        }.getOrNull()?.also { latestChecks[key] = System.currentTimeMillis() to it }
+    }
+
+    /**
+     * Checks every source in [others] against [mine], the check of a source whose newest chapters are padding, quietly and a few
+     * at a time ([onProgress] hears how far it is). Reprint sites of one book share their padding, so the freshest few are
+     * usually all teasers; the sources that stop at different chapters are the ones most worth reading, so up to two per
+     * distinct newest chapter go first and the rest follow. Only a source whose newest chapter is itself complete counts, and
+     * only if it is at least three chapters further than [mine].
+     */
+    suspend fun findCompleteSource(mine: app.openread.engine.LatestCheck.Result, others: List<SearchBook>, onProgress: (done: Int, total: Int) -> Unit): OthersChecked = coroutineScope {
+        val distinct = Freshness.newestFirst(others.distinctBy { it.origin })
+        val diverse = distinct.groupBy { it.latestChapterTitle.orEmpty() }.values.flatMap { it.take(2) }.toSet()
+        val candidates = distinct.filter { it in diverse } + distinct.filter { it !in diverse }
+        onProgress(0, candidates.size)
+        val gate = Semaphore(6)
+        val done = java.util.concurrent.atomic.AtomicInteger(0)
+        val checked = candidates.map { cand ->
+            async {
+                gate.withPermit {
+                    val r = withTimeoutOrNull(90_000) { checkLatest(cand) }
+                    onProgress(done.incrementAndGet(), candidates.size)
+                    cand to r
+                }
+            }
+        }.awaitAll()
+        val best = checked.filter { it.second?.complete == true }.maxWithOrNull(compareBy({ it.second!!.completeCount }, { Freshness.of(it.first) }))
+        OthersChecked(
+            best?.takeIf { it.second!!.completeCount >= mine.completeCount + 3 }?.let { BetterSource(it.first, it.second!!) },
+            checked.count { it.second != null },
+        )
     }
 
     suspend fun reloadToc(row: BookRow): List<ChapterRow> = withContext(Dispatchers.IO) {
@@ -302,16 +357,25 @@ class Library(private val context: Context, private val db: AppDb, private val e
 
     // ---- changing source -----------------------------------------------------------------------------------------
 
-    /** Other sources that have the same book (same title, and same author when both are known). */
-    suspend fun alternatives(row: BookRow): List<SearchBook> = coroutineScope {
+    /**
+     * Other sources that have the same book (same title, and same author when both are known), freshest first. Every source
+     * that answers adds to the list at once, so a picker can show the first ones while the slow sources are still being asked
+     * (waiting for all of them takes as long as the slowest source's timeout).
+     */
+    fun alternativesFlow(row: BookRow): Flow<List<SearchBook>> = flow {
         val rows = sources.enabled().filter { it.key != row.origin }
         val found = ArrayList<SearchBook>()
         engine.search(row.name, rows, 20_000).collect { progress ->
-            progress.hits.filter { it.name == row.name && (row.author.isBlank() || it.author.isBlank() || it.author == row.author) }
-                .firstOrNull()?.let { found.add(it) }
+            val hit = progress.hits.filter { it.name == row.name && (row.author.isBlank() || it.author.isBlank() || it.author == row.author) }.firstOrNull()
+            if (hit != null) {
+                found.add(hit)
+                emit(Freshness.newestFirst(found))
+            }
         }
-        Freshness.newestFirst(found)
     }
+
+    /** The complete list of [alternativesFlow], for callers that have no use for a partial one. */
+    suspend fun alternatives(row: BookRow): List<SearchBook> = alternativesFlow(row).lastOrNull().orEmpty()
 
     /** Moves a shelf book to another source, keeping the reading position by chapter title, then by index. */
     suspend fun switchTo(stale: BookRow, target: SearchBook): BookRow = withContext(Dispatchers.IO) {

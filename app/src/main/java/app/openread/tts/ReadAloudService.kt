@@ -19,6 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 /**
@@ -39,7 +40,8 @@ class ReadAloudService : Service() {
         // Must be called promptly after the service starts, or the system stops it.
         ServiceCompat.startForeground(this, NOTIFICATION_ID, notification(ReadAloud.state.value), ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
         watch = scope.launch {
-            ReadAloud.state.collectLatest { s ->
+            // The notification shows the book, chapter and whether it is playing; the sentence changing is not its business.
+            ReadAloud.state.distinctUntilChanged { a, b -> a.active == b.active && a.playing == b.playing && a.book == b.book && a.chapter == b.chapter }.collectLatest { s ->
                 if (!s.active) {
                     ServiceCompat.stopForeground(this@ReadAloudService, ServiceCompat.STOP_FOREGROUND_REMOVE)
                     stopSelf()

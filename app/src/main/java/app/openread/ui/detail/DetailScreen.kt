@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
@@ -56,6 +57,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import app.openread.AppContainer
 import app.openread.container
 import app.openread.data.BookRow
+import app.openread.data.SwitchOffer
+import app.openread.data.betterLine
+import app.openread.data.truncatedNote
 import app.openread.data.toBook
 import app.openread.data.toChapter
 import app.openread.engine.Book
@@ -63,6 +67,7 @@ import app.openread.engine.Chapter
 import app.openread.engine.Freshness
 import app.openread.engine.SearchBook
 import app.openread.ui.components.BookCover
+import app.openread.ui.components.SwitchOfferDialog
 import app.openread.ui.components.factory
 import app.openread.ui.nav.Handoff
 import kotlinx.coroutines.Job
@@ -92,6 +97,11 @@ data class DetailState(
     /** Checking whether the newest chapters are really there; and, once known, what to tell the reader. */
     val checkingLatest: Boolean = false,
     val latestNote: String? = null,
+    /** While other sources are being checked in the background: how many are done, of how many. */
+    val latestChecked: Int = 0,
+    val latestTotal: Int = 0,
+    /** Set when the check found a clearly better source: the reader is asked whether to move there. */
+    val offer: SwitchOffer? = null,
 )
 
 class DetailViewModel(private val c: AppContainer, private val bookUrl: String) : ViewModel() {
@@ -120,11 +130,12 @@ class DetailViewModel(private val c: AppContainer, private val bookUrl: String) 
         }
     }
 
-    private suspend fun open(hit: SearchBook) {
+    /** Opens [hit] into the page; false (and the error shown) when that failed. */
+    private suspend fun open(hit: SearchBook): Boolean =
         runCatching { c.library.open(hit) }
             .onSuccess { (b, ch) -> _state.update { it.copy(loading = false, error = null, book = b, chapters = ch, switching = false) } }
             .onFailure { e -> _state.update { it.copy(loading = false, switching = false, error = "${hit.originName}：${e.message ?: "打开失败"}") } }
-    }
+            .isSuccess
 
     /**
      * Opens [hit]; if that source is down, the same book from the next source in [alternates] is tried (up to five in all),
@@ -147,48 +158,48 @@ class DetailViewModel(private val c: AppContainer, private val bookUrl: String) 
         _state.update { it.copy(loading = false, switching = false, error = firstError ?: "打开失败") }
     }
 
+    /** The sources the last check looked at, so that moving to one of them can be checked against the rest. */
+    private var lastOthers: List<SearchBook> = emptyList()
+
     /**
      * The newest chapters should be real text, not a teaser padded with other novels. The opened source is checked; if its newest
-     * chapter is a teaser, the freshest other sources are checked too and the book moves to the one whose newest complete chapter
-     * is furthest on (at least three ahead of the current one). If none is better, the reader is told where the complete text ends.
+     * chapter is a teaser, every other source is checked too, quietly. If one is clearly better (its newest complete chapter is
+     * at least three further on) the reader is asked whether to move there; nothing is switched without their yes. If none is
+     * better, the reader is told where the complete text ends.
      */
     private fun verifyLatest(current: SearchBook, others: List<SearchBook>) {
         verifyJob?.cancel()
+        lastOthers = others
         val shown = _state.value.book?.bookUrl
         verifyJob = viewModelScope.launch {
-            _state.update { it.copy(checkingLatest = true, latestNote = null) }
+            _state.update { it.copy(checkingLatest = true, latestNote = null, latestChecked = 0, latestTotal = 0, offer = null) }
             val mine = withTimeoutOrNull(90_000) { c.library.checkLatest(current) } ?: withTimeoutOrNull(90_000) { c.library.checkLatest(current) }
             if (mine == null || mine.complete) { _state.update { it.copy(checkingLatest = false) }; return@launch }
-            // Reprint sites of one book share their padding, so the freshest few are usually all teasers. Sources that stop at different
-            // chapters are the ones worth reading: up to two per distinct newest chapter, from the freshest down.
-            val candidates = Freshness.newestFirst(others.distinctBy { it.origin })
-                .groupBy { it.latestChapterTitle.orEmpty() }.values.take(16).flatMap { it.take(2) }
-            val gate = kotlinx.coroutines.sync.Semaphore(6)
-            val checked = coroutineScope {
-                candidates.map { cand -> async { gate.withPermit { cand to withTimeoutOrNull(90_000) { c.library.checkLatest(cand) } } } }.awaitAll()
-            }
-            // Only a source whose newest chapter is itself complete is worth moving to; one padded at a later chapter is no better.
-            val best = checked.filter { it.second?.complete == true }.maxWithOrNull(compareBy({ it.second!!.completeCount }, { if (it.second!!.complete) 1 else 0 }, { Freshness.of(it.first) }))
-            val better = best?.takeIf { it.second!!.completeCount >= mine.completeCount + 3 }
+            val found = c.library.findCompleteSource(mine, others) { done, total -> _state.update { it.copy(latestChecked = done, latestTotal = total) } }
             // The reader may have switched source or reopened the page while this ran; then the verdict is about something else.
             if (_state.value.book?.bookUrl != shown) { _state.update { it.copy(checkingLatest = false) }; return@launch }
-            if (better != null && !_state.value.inShelf) {
-                _state.update { it.copy(checkingLatest = false) }
-                doSwitch(better.first)
-                _state.update { it.copy(message = "${current.originName} 的最新几章不完整，已换到 ${better.first.originName}（完整到「${better.second!!.completeTitle}」）") }
-            } else if (better != null) {
-                // On the shelf the source is not changed behind the reader's back.
-                _state.update { it.copy(checkingLatest = false, latestNote = "这个书源的最新章不完整（「${mine.completeTitle}」之后是别的小说混进来的内容）。${better.first.originName} 的最新章是完整的，到「${better.second!!.completeTitle}」，可以点右上角换源。") }
+            val better = found.better
+            if (better != null) {
+                val why = truncatedNote(current, mine) + betterLine(better)
+                _state.update { it.copy(checkingLatest = false, latestNote = "$why 可以点右上角换源。", offer = SwitchOffer(better.source, "$why\n\n要切换过去吗？")) }
             } else {
                 _state.update {
                     it.copy(
                         checkingLatest = false,
-                        latestNote = "「${mine.completeTitle}」之后的章节只有开头一小段，其余是别的小说混进来的内容；已核对 ${checked.count { it.second != null } + 1} 个书源，都没有更完整的，完整内容要到原站阅读。",
+                        latestNote = "「${mine.completeTitle}」之后的章节只有开头一小段，其余是别的小说混进来的内容；已核对 ${found.checked + 1} 个书源，都没有更完整的，完整内容要到原站阅读。",
                     )
                 }
             }
         }
     }
+
+    fun acceptOffer() {
+        val o = _state.value.offer ?: return
+        _state.update { it.copy(offer = null) }
+        switchTo(o.target)
+    }
+
+    fun dismissOffer() = _state.update { it.copy(offer = null) }
 
     /** Puts the book on the shelf (if it is not already) and returns its key. */
     suspend fun ensureShelf(): String? {
@@ -210,27 +221,39 @@ class DetailViewModel(private val c: AppContainer, private val bookUrl: String) 
         }
     }
 
+    private var findJob: Job? = null
+
     fun findAlternatives() {
         val b = _state.value.book ?: return
-        viewModelScope.launch {
+        findJob?.cancel()
+        findJob = viewModelScope.launch {
             _state.update { it.copy(finding = true, alternatives = emptyList()) }
             val row = c.library.book(b.bookUrl) ?: b.toRowForSearch()
-            val alts = runCatching { c.library.alternatives(row) }.getOrDefault(emptyList())
-            _state.update { it.copy(finding = false, alternatives = alts) }
+            // The list fills as sources answer; the sheet shows each one at once instead of waiting for the slowest.
+            // A list that arrives after the sheet was closed (or a source was picked) must not open it again.
+            runCatching { c.library.alternativesFlow(row).collect { alts -> _state.update { if (it.alternatives == null) it else it.copy(alternatives = alts) } } }
+            _state.update { it.copy(finding = false) }
         }
     }
 
-    fun dismissAlternatives() = _state.update { it.copy(alternatives = null) }
+    fun dismissAlternatives() {
+        findJob?.cancel()
+        _state.update { it.copy(alternatives = null, finding = false) }
+    }
 
     fun switchToFresher() { _state.value.fresher?.let { switchTo(it) } }
 
     fun switchTo(target: SearchBook) {
         verifyJob?.cancel() // the reader chose; a check that is still running must not undo it
+        findJob?.cancel()
         _state.update { it.copy(checkingLatest = false) }
-        doSwitch(target)
+        // The new source gets its newest chapters checked too, against the sources the picker found (or the last check looked at).
+        val pool = _state.value.alternatives?.takeIf { it.isNotEmpty() } ?: lastOthers
+        doSwitch(target, check = pool.filter { it.origin != target.origin })
     }
 
-    private fun doSwitch(target: SearchBook) {
+    /** [check]: after the move, check the new source's newest chapters against these other sources (null: do not). */
+    private fun doSwitch(target: SearchBook, check: List<SearchBook>? = null) {
         viewModelScope.launch {
             _state.update { it.copy(alternatives = null, switching = true, fresher = null) }
             val b = _state.value.book ?: return@launch
@@ -240,12 +263,14 @@ class DetailViewModel(private val c: AppContainer, private val bookUrl: String) 
                     .onSuccess { fresh ->
                         val ch = c.library.chapters(fresh.bookUrl).map { it.toChapter() }
                         _state.update { it.copy(book = fresh.toBook(), chapters = ch, switching = false, readIndex = fresh.chapterIndex, message = "已换到 ${target.originName}") }
+                        if (check != null) verifyLatest(target, check)
                     }
                     .onFailure { e -> _state.update { it.copy(switching = false, message = "换源失败：${e.message}") } }
             } else {
                 Handoff.search = target
                 origin = target
-                open(target)
+                // A source that would not open has nothing to check, and the page still shows the old book.
+                if (open(target) && check != null) verifyLatest(target, check)
             }
         }
     }
@@ -335,7 +360,7 @@ fun DetailScreen(bookUrl: String, onBack: () -> Unit, onRead: (String, Int?) -> 
                         }
                     }
                     if (s.checkingLatest) item {
-                        Text("正在核对最新章是否完整…", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                        Text(if (s.latestTotal > 0) "正在后台核对其他书源的最新章（${s.latestChecked}/${s.latestTotal}）…" else "正在核对最新章是否完整…", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                     }
                     s.latestNote?.let { note ->
                         item {
@@ -375,10 +400,17 @@ fun DetailScreen(bookUrl: String, onBack: () -> Unit, onRead: (String, Int?) -> 
         scope.launch { vm.ensureShelf()?.let { onRead(it, idx) } }
     }
 
+    s.offer?.let { SwitchOfferDialog(it, onSwitch = vm::acceptOffer, onDismiss = vm::dismissOffer) }
+
     s.alternatives?.let { alts ->
         ModalBottomSheet(onDismissRequest = vm::dismissAlternatives) {
             Text("换源", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-            if (s.finding) Row(Modifier.fillMaxWidth().padding(24.dp), horizontalArrangement = Arrangement.Center) { CircularProgressIndicator() }
+            if (s.finding) {
+                Row(Modifier.fillMaxWidth().padding(if (alts.isEmpty()) 24.dp else 8.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(Modifier.size(if (alts.isEmpty()) 40.dp else 18.dp), strokeWidth = if (alts.isEmpty()) 4.dp else 2.dp)
+                    if (alts.isNotEmpty()) Text("继续搜索，已找到 ${alts.size} 个", Modifier.padding(start = 8.dp), style = MaterialTheme.typography.labelMedium)
+                }
+            }
             else if (alts.isEmpty()) Text("其他书源里没有找到这本书", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
             LazyColumn {
                 items(alts, key = { it.origin }) { a ->

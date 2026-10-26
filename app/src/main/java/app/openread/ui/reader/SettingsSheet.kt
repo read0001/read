@@ -52,6 +52,7 @@ import app.openread.data.Settings
 import app.openread.data.VoiceEngine
 import app.openread.tts.HttpVoice
 import app.openread.tts.OfflineModel
+import app.openread.tts.ReadAloud
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,8 +105,8 @@ fun SettingsSheet(settings: Settings, update: ((Settings) -> Settings) -> Unit, 
                 Text("听书语速", Modifier.padding(end = 16.dp))
                 Slider(
                     value = settings.readAloudRate,
-                    onValueChange = { v -> update { it.copy(readAloudRate = (v * 4).roundToInt() / 4f) } },
-                    valueRange = 0.5f..2f, steps = 5, modifier = Modifier.weight(1f),
+                    onValueChange = { v -> update { it.copy(readAloudRate = (v / ReadAloud.RATE_STEP).roundToInt() * ReadAloud.RATE_STEP) } },
+                    valueRange = ReadAloud.MIN_RATE..ReadAloud.MAX_RATE, steps = ((ReadAloud.MAX_RATE - ReadAloud.MIN_RATE) / ReadAloud.RATE_STEP).roundToInt() - 1, modifier = Modifier.weight(1f),
                 )
                 Text("%.2f×".format(settings.readAloudRate))
             }

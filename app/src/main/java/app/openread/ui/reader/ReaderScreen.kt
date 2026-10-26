@@ -30,6 +30,8 @@ import androidx.compose.foundation.layout.systemBarsIgnoringVisibility
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
@@ -45,12 +47,14 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -71,14 +75,23 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -93,6 +106,7 @@ import app.openread.data.PageMode
 import app.openread.data.ReaderPalette
 import app.openread.data.Settings
 import app.openread.engine.SearchBook
+import app.openread.ui.components.SwitchOfferDialog
 import app.openread.ui.components.factory
 import app.openread.ui.detail.TocSheet
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -122,13 +136,11 @@ fun ReaderScreen(bookUrl: String, startIndex: Int?, onBack: () -> Unit) {
     LaunchedEffect(s.message) { s.message?.let { snack.showSnackbar(it); vm.consumeMessage() } }
     LaunchedEffect(s.position.index, s.chapters.size) { if (s.chapters.isNotEmpty()) vm.prefetch(s.position.index) }
     val ra by ReadAloud.state.collectAsState()
-    // Reading aloud moved to the next chapter: the page follows it.
-    LaunchedEffect(ra.chapterIndex) {
-        if (ra.playing && ra.bookUrl == s.book?.bookUrl && ra.chapterIndex >= 0 && ra.chapterIndex != s.position.index) vm.go(ra.chapterIndex)
-    }
-    // A page turn while reading aloud: read from the new place instead.
-    LaunchedEffect(s.position.index) {
-        if (ra.playing && ra.bookUrl == s.book?.bookUrl && ra.chapterIndex >= 0 && s.position.index != ra.chapterIndex) vm.readAloud(ctx)
+    val listening = ra.active && ra.bookUrl == s.book?.bookUrl
+    // Reading aloud moved to another chapter, or this reader was opened while it runs: the page follows it. The other way
+    // round (the reader turns a page or jumps to a chapter) is reported by the readers below, and reading follows the page.
+    LaunchedEffect(ra.chapterIndex, listening, s.loaded) {
+        if (s.loaded && listening && ra.chapterIndex >= 0 && ra.chapterIndex != s.position.index) vm.go(ra.chapterIndex, 0)
     }
     LaunchedEffect(settings.readAloudRate) { ReadAloud.setRate(settings.readAloudRate) }
     LaunchedEffect(ra.message) { ra.message?.let { snack.showSnackbar(it); ReadAloud.consumeMessage() } }
@@ -141,8 +153,8 @@ fun ReaderScreen(bookUrl: String, startIndex: Int?, onBack: () -> Unit) {
                 TextButton(onClick = onBack) { Text("返回") }
             }
             else -> {
-                if (settings.pageMode == PageMode.Slide) SlideReader(vm, s, settings, fg, onToggleMenu = { menu = !menu })
-                else ScrollReader(vm, s, settings, fg, onToggleMenu = { menu = !menu })
+                if (settings.pageMode == PageMode.Slide) SlideReader(vm, s, settings, fg, ra, onToggleMenu = { menu = !menu })
+                else ScrollReader(vm, s, settings, fg, ra, onToggleMenu = { menu = !menu })
             }
         }
 
@@ -158,7 +170,11 @@ fun ReaderScreen(bookUrl: String, startIndex: Int?, onBack: () -> Unit) {
             )
         }
         AnimatedVisibility(menu, Modifier.align(Alignment.BottomCenter), enter = fadeIn() + slideInVertically { it }, exit = fadeOut() + slideOutVertically { it }) {
-            BottomMenu(s, vm, listening = ra.playing, onToc = { showToc = true }, onListen = { vm.readAloud(ctx) }, onSettings = { showSettings = true })
+            BottomMenu(
+                s, vm, listening = ra.playing, session = listening, rate = settings.readAloudRate,
+                onRate = { r -> vm.updateSettings { it.copy(readAloudRate = (r.coerceIn(ReadAloud.MIN_RATE, ReadAloud.MAX_RATE) / ReadAloud.RATE_STEP).roundToInt() * ReadAloud.RATE_STEP) } },
+                onToc = { showToc = true }, onListen = { vm.readAloud(ctx) }, onSettings = { showSettings = true },
+            )
         }
         androidx.compose.material3.SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 72.dp))
         if (s.busy) CircularProgressIndicator(Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(16.dp).size(24.dp), color = fg)
@@ -169,6 +185,7 @@ fun ReaderScreen(bookUrl: String, startIndex: Int?, onBack: () -> Unit) {
     }
     if (showSettings) SettingsSheet(settings, vm::updateSettings) { showSettings = false }
     if (showSwitch) SwitchSheet(vm) { showSwitch = false }
+    s.offer?.let { SwitchOfferDialog(it, onSwitch = vm::acceptOffer, onDismiss = vm::dismissOffer) }
 }
 
 /** Immersive reading, brightness and keep-awake, undone when the reader closes. */
@@ -233,10 +250,19 @@ private sealed interface Slot {
 }
 
 @Composable
-private fun SlideReader(vm: ReaderViewModel, s: ReaderState, settings: Settings, fg: Color, onToggleMenu: () -> Unit) {
+private fun SlideReader(vm: ReaderViewModel, s: ReaderState, settings: Settings, fg: Color, listen: ReadAloud.State, onToggleMenu: () -> Unit) {
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
+    val bookUrl = rememberUpdatedState(s.book?.bookUrl)
+    val listenNow = rememberUpdatedState(listen)
+    val listening = listen.active && listen.bookUrl == s.book?.bookUrl
+    // Page turns move reading aloud along, but not before the page has caught up with a session that was already running
+    // when the reader opened (otherwise opening the reader would drag the audio back to the saved page).
+    var aligned by remember { mutableStateOf(!listening) }
+    LaunchedEffect(listening) { if (!listening) aligned = true }
+    val alignedNow = rememberUpdatedState(aligned)
+    val highlight = fg.copy(alpha = 0.16f)
     BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(StableInsets)) {
         val sidePad = 22.dp
         val topPad = 18.dp
@@ -254,7 +280,9 @@ private fun SlideReader(vm: ReaderViewModel, s: ReaderState, settings: Settings,
             return when (val t = vm.texts[idx]) {
                 is ChapterText.Ready -> {
                     val pages = cache.getOrPut(idx to t.text.hashCode()) {
+                        val paragraphs = Paginator.paragraphs(ch.title, t.text)
                         Paginator.paginate(measurer, Paginator.display(ch.title, t.text, (settings.fontSize * 1.3f).sp), style, widthPx, heightPx, ch.title)
+                            .copyWith(paragraphs, Paginator.paragraphStarts(paragraphs))
                     }
                     pages.pages.indices.map { Slot.Content(idx, pages, it) }
                 }
@@ -284,13 +312,36 @@ private fun SlideReader(vm: ReaderViewModel, s: ReaderState, settings: Settings,
                 snapshotFlow { pager.settledPage }.distinctUntilChanged().collect { page ->
                     when (val slot = slots.getOrNull(page)) {
                         is Slot.Content -> {
-                            if (slot.chapter != cur) vm.go(slot.chapter, if (slot.chapter < cur) Int.MAX_VALUE else 0)
-                            else vm.record(cur, slot.pages.pages[slot.page].start)
+                            if (slot.chapter != cur) {
+                                vm.go(slot.chapter, if (slot.chapter < cur) Int.MAX_VALUE else 0)
+                            } else {
+                                val start = slot.pages.pages[slot.page].start
+                                vm.record(cur, start)
+                                // The first text on this page is where reading aloud goes on from, unless it is already on this page.
+                                val (paragraph, char) = Paginator.locate(slot.pages.paragraphs, slot.pages.starts, start)
+                                vm.noteVisible(cur, paragraph, char)
+                                val ra = listenNow.value
+                                if (alignedNow.value && ra.active && ra.bookUrl == bookUrl.value) {
+                                    val span = ra.span
+                                    val spokenPage = if (ra.chapterIndex == cur && span != null) slot.pages.pageAt(slot.pages.offsetOf(span.paragraph, span.from)) else -1
+                                    if (spokenPage != slot.page) ReadAloud.seek(cur, paragraph, char)
+                                }
+                            }
                         }
                         is Slot.Status -> if (slot.chapter != cur) vm.go(slot.chapter, if (slot.chapter < cur) Int.MAX_VALUE else 0)
                         null -> {}
                     }
                 }
+            }
+
+            // Reading aloud moves on: keep the sentence being read on the page that is showing.
+            val curPages = (curSlots.firstOrNull() as? Slot.Content)?.pages
+            LaunchedEffect(pager, listen.span, listen.chapterIndex, listening) {
+                val span = listen.span
+                if (!listening || span == null || curPages == null || listen.chapterIndex != cur) return@LaunchedEffect
+                val target = lead + curPages.pageAt(curPages.offsetOf(span.paragraph, span.from))
+                if (pager.settledPage != target && !pager.isScrollInProgress) pager.animateScrollToPage(target)
+                aligned = true
             }
 
             Box(
@@ -307,7 +358,11 @@ private fun SlideReader(vm: ReaderViewModel, s: ReaderState, settings: Settings,
             ) {
                 HorizontalPager(pager, Modifier.fillMaxSize(), beyondViewportPageCount = 1) { i ->
                     when (val slot = slots[i]) {
-                        is Slot.Content -> PageView(slot, style, fg, sidePad, topPad, footerH)
+                        is Slot.Content -> {
+                            val span = listen.span?.takeIf { listening && listen.chapterIndex == slot.chapter && it.to > it.from }
+                            val spoken = span?.let { slot.pages.offsetOf(it.paragraph, it.from) until slot.pages.offsetOf(it.paragraph, it.to) }
+                            PageView(slot, style, fg, sidePad, topPad, footerH, spoken, highlight)
+                        }
                         is Slot.Status -> StatusView(slot, s, vm, fg)
                     }
                 }
@@ -317,13 +372,30 @@ private fun SlideReader(vm: ReaderViewModel, s: ReaderState, settings: Settings,
 }
 
 @Composable
-private fun PageView(slot: Slot.Content, style: TextStyle, fg: Color, sidePad: androidx.compose.ui.unit.Dp, topPad: androidx.compose.ui.unit.Dp, footerH: androidx.compose.ui.unit.Dp) {
+private fun PageView(
+    slot: Slot.Content, style: TextStyle, fg: Color, sidePad: androidx.compose.ui.unit.Dp, topPad: androidx.compose.ui.unit.Dp, footerH: androidx.compose.ui.unit.Dp,
+    spoken: IntRange?, highlight: Color,
+) {
+    val page = slot.pages.pages[slot.page]
+    val text = remember(page, spoken, highlight) { highlighted(page, spoken, highlight) }
     Column(Modifier.fillMaxSize().padding(horizontal = sidePad)) {
-        Text(slot.pages.pages[slot.page].text, style = style, modifier = Modifier.padding(top = topPad).weight(1f))
+        Text(text, style = style, modifier = Modifier.padding(top = topPad).weight(1f))
         Row(Modifier.fillMaxWidth().height(footerH), verticalAlignment = Alignment.CenterVertically) {
             Text(slot.pages.title, color = fg.copy(alpha = 0.5f), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             Text("${slot.page + 1}/${slot.pages.pages.size}", color = fg.copy(alpha = 0.5f), fontSize = 11.sp)
         }
+    }
+}
+
+/** [page]'s text with the part of it that is being read aloud ([spoken], offsets in the chapter's display text) marked. */
+private fun highlighted(page: Page, spoken: IntRange?, color: Color): AnnotatedString {
+    if (spoken == null) return page.text
+    val from = maxOf(spoken.first, page.start) - page.start
+    val to = minOf(spoken.last + 1, page.end) - page.start
+    if (to <= from) return page.text
+    return buildAnnotatedString {
+        append(page.text)
+        addStyle(SpanStyle(background = color), from, to)
     }
 }
 
@@ -347,7 +419,7 @@ private fun StatusView(slot: Slot.Status, s: ReaderState, vm: ReaderViewModel, f
 // ---- scrolling mode ------------------------------------------------------------------------------------------------
 
 @Composable
-private fun ScrollReader(vm: ReaderViewModel, s: ReaderState, settings: Settings, fg: Color, onToggleMenu: () -> Unit) {
+private fun ScrollReader(vm: ReaderViewModel, s: ReaderState, settings: Settings, fg: Color, listen: ReadAloud.State, onToggleMenu: () -> Unit) {
     // The list is anchored at the chapter the reader entered with; it only grows downwards. Re-anchoring happens when
     // the position jumps outside it (table of contents, slider, "previous chapter").
     var first by remember { mutableIntStateOf(s.position.index) }
@@ -355,10 +427,83 @@ private fun ScrollReader(vm: ReaderViewModel, s: ReaderState, settings: Settings
     val list = rememberLazyListState()
     val style = TextStyle(color = fg, fontSize = settings.fontSize.sp, lineHeight = (settings.fontSize * settings.lineSpacing).sp)
     val vmRef = rememberUpdatedState(vm)
+    val highlight = fg.copy(alpha = 0.16f)
+
+    val bookUrl = rememberUpdatedState(s.book?.bookUrl)
+    val listenNow = rememberUpdatedState(listen)
+    val listening = listen.active && listen.bookUrl == s.book?.bookUrl
+    // As in the paging reader: scrolling moves reading aloud along, but only once the list has caught up with a session
+    // that was already running when the reader opened.
+    var aligned by remember { mutableStateOf(!listening) }
+    LaunchedEffect(listening) { if (!listening) aligned = true }
+    val alignedNow = rememberUpdatedState(aligned)
+
+    // How each chapter's body was last laid out, and where it starts inside its list item: what turns a character of the
+    // chapter into a place on screen and back.
+    val layouts = remember { HashMap<Int, TextLayoutResult>() }
+    val bodyTops = remember { HashMap<Int, Float>() }
+    val paragraphCache = remember { HashMap<Pair<Int, Int>, Pair<List<String>, IntArray>>() }
+    fun paragraphsOf(ch: Int): Pair<List<String>, IntArray>? {
+        val text = (vm.texts[ch] as? ChapterText.Ready)?.text ?: return null
+        return paragraphCache.getOrPut(ch to text.hashCode()) {
+            val paragraphs = Paginator.paragraphs(s.chapters.getOrNull(ch)?.title.orEmpty(), text)
+            paragraphs to Paginator.paragraphStarts(paragraphs)
+        }
+    }
+    /** The top of the spoken text inside chapter [ch]'s list item, or null while that is not laid out yet. */
+    fun spokenTop(ch: Int, span: ReadAloud.Span): Float? {
+        val (paragraphs, starts) = paragraphsOf(ch) ?: return null
+        if (span.paragraph == 0) return 0f
+        val layout = layouts[ch] ?: return null
+        val inBody = starts[span.paragraph.coerceIn(0, starts.lastIndex)] + span.from - (paragraphs[0].length + 2)
+        val box = layout.getBoundingBox(inBody.coerceIn(0, (layout.layoutInput.text.length - 1).coerceAtLeast(0)))
+        return (bodyTops[ch] ?: return null) + box.top
+    }
+    /** Is the sentence being read inside the visible part of the list? */
+    fun spokenVisible(ra: ReadAloud.State): Boolean {
+        val span = ra.span ?: return true
+        val info = list.layoutInfo.visibleItemsInfo.firstOrNull { it.index == ra.chapterIndex - first + 1 } ?: return false
+        val y = spokenTop(ra.chapterIndex, span) ?: return false
+        val top = info.offset + y
+        return top >= 0f && top < list.layoutInfo.viewportSize.height
+    }
+
+    // The list opens at the top of the chapter, whatever the paging reader had on screen: that is where listening starts.
+    LaunchedEffect(Unit) { vmRef.value.noteVisible(s.position.index, 0, 0) }
 
     LaunchedEffect(s.position.index) {
         val idx = s.position.index
-        if (idx < first || idx > last) { first = idx; last = idx; list.scrollToItem(0) }
+        if (idx < first || idx > last) {
+            first = idx; last = idx; list.scrollToItem(0)
+            vmRef.value.noteVisible(idx, 0, 0)
+            // A chapter the reader jumped to: reading aloud goes on from its start (unless that is where it already is).
+            val ra = listenNow.value
+            if (alignedNow.value && ra.active && ra.bookUrl == bookUrl.value && ra.chapterIndex != idx) ReadAloud.seek(idx, 0, 0)
+        }
+    }
+
+    // Reading aloud moves on: scroll so that the sentence being read stays in view.
+    LaunchedEffect(listen.span, listen.chapterIndex, listening) {
+        val span = listen.span
+        val ch = listen.chapterIndex
+        if (!listening || span == null || ch < first || ch > last || list.isScrollInProgress) return@LaunchedEffect
+        val item = ch - first + 1
+        var y = spokenTop(ch, span)
+        var info = list.layoutInfo.visibleItemsInfo.firstOrNull { it.index == item }
+        if (y == null || info == null) { // not on screen (or not measured) yet: bring the chapter in, then look again
+            list.scrollToItem(item)
+            withFrameNanos { }
+            y = spokenTop(ch, span)
+            info = list.layoutInfo.visibleItemsInfo.firstOrNull { it.index == item }
+        }
+        if (y != null) {
+            val viewport = list.layoutInfo.viewportSize.height
+            val top = (info?.offset ?: 0) + y
+            if (info == null || top < viewport * 0.05f || top > viewport * 0.65f) {
+                list.animateScrollToItem(item, scrollOffset = (y - viewport * 0.2f).roundToInt().coerceAtLeast(0))
+            }
+        }
+        aligned = true
     }
 
     // Grow one chapter at a time as the reader nears the end. List item 0 is the "previous chapter" button.
@@ -375,6 +520,30 @@ private fun ScrollReader(vm: ReaderViewModel, s: ReaderState, settings: Settings
         }
     }
 
+    // When a scroll comes to rest, the first text on screen is where reading aloud goes on from, unless the sentence being
+    // read is already in view.
+    LaunchedEffect(Unit) {
+        var scrolling = false
+        snapshotFlow { list.isScrollInProgress }.collect { now ->
+            if (scrolling && !now) {
+                val top = list.layoutInfo.visibleItemsInfo.firstOrNull { it.index >= 1 && it.offset + it.size > 0 }
+                val ch = top?.let { first + it.index - 1 }
+                val (paragraphs, starts) = ch?.let { paragraphsOf(it) } ?: (null to null)
+                val layout = ch?.let { layouts[it] }
+                val bodyTop = ch?.let { bodyTops[it] }
+                if (top != null && ch != null && paragraphs != null && starts != null && layout != null && bodyTop != null) {
+                    val y = -top.offset - bodyTop
+                    val (paragraph, char) = if (y <= 0f) 0 to 0
+                    else Paginator.locate(paragraphs, starts, layout.getOffsetForPosition(Offset(0f, y)) + paragraphs[0].length + 2)
+                    vmRef.value.noteVisible(ch, paragraph, char)
+                    val ra = listenNow.value
+                    if (alignedNow.value && ra.active && ra.bookUrl == bookUrl.value && !spokenVisible(ra)) ReadAloud.seek(ch, paragraph, char)
+                }
+            }
+            scrolling = now
+        }
+    }
+
     Box(Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { onToggleMenu() } }) {
         LazyColumn(Modifier.fillMaxSize().windowInsetsPadding(StableInsets), state = list, contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp)) {
             item(key = "top") {
@@ -382,10 +551,42 @@ private fun ScrollReader(vm: ReaderViewModel, s: ReaderState, settings: Settings
             }
             items((first..last).toList(), key = { it }) { ch ->
                 val title = s.chapters.getOrNull(ch)?.title.orEmpty()
+                val span = listen.span?.takeIf { listening && listen.chapterIndex == ch && it.to > it.from }
+                val titleStyle = style.copy(fontSize = (settings.fontSize * 1.3f).sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                 Column(Modifier.padding(bottom = 32.dp)) {
-                    Text(title, style = style.copy(fontSize = (settings.fontSize * 1.3f).sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold), modifier = Modifier.padding(bottom = 12.dp))
+                    Text(
+                        remember(title, span) {
+                            if (span?.paragraph != 0) AnnotatedString(title) else buildAnnotatedString {
+                                append(title)
+                                addStyle(SpanStyle(background = highlight), span.from.coerceAtMost(title.length), span.to.coerceAtMost(title.length))
+                            }
+                        },
+                        style = titleStyle, modifier = Modifier.padding(bottom = 12.dp),
+                    )
                     when (val t = vm.texts[ch]) {
-                        is ChapterText.Ready -> Text(Paginator.body(t.text), style = style)
+                        is ChapterText.Ready -> {
+                            val starts = paragraphsOf(ch)?.second
+                            val body = remember(t.text) { Paginator.body(t.text) }
+                            // The sentence being read is painted behind the text from its layout, rather than built into the text:
+                            // the text then stays the same object, so a new sentence does not make a long chapter measure again.
+                            val marked = if (span == null || span.paragraph == 0 || starts == null) null else {
+                                val base = starts[span.paragraph.coerceIn(0, starts.lastIndex)] - (title.length + 2)
+                                val from = (base + span.from).coerceIn(0, body.length)
+                                from to (base + span.to).coerceIn(from, body.length)
+                            }
+                            Text(
+                                body, style = style,
+                                onTextLayout = { layouts[ch] = it },
+                                modifier = Modifier
+                                    .onGloballyPositioned { bodyTops[ch] = it.positionInParent().y }
+                                    .drawBehind {
+                                        val layout = layouts[ch]
+                                        if (marked != null && layout != null && marked.second > marked.first) {
+                                            drawPath(layout.getPathForRange(marked.first, marked.second), highlight)
+                                        }
+                                    },
+                            )
+                        }
                         is ChapterText.Failed -> Row(verticalAlignment = Alignment.CenterVertically) { Text(t.message, color = fg.copy(alpha = 0.7f), modifier = Modifier.weight(1f)); TextButton(onClick = { vm.reload(ch) }) { Text("重试") } }
                         else -> CircularProgressIndicator(color = fg)
                     }
@@ -398,7 +599,10 @@ private fun ScrollReader(vm: ReaderViewModel, s: ReaderState, settings: Settings
 // ---- menus ---------------------------------------------------------------------------------------------------------
 
 @Composable
-private fun BottomMenu(s: ReaderState, vm: ReaderViewModel, listening: Boolean, onToc: () -> Unit, onListen: () -> Unit, onSettings: () -> Unit) {
+private fun BottomMenu(
+    s: ReaderState, vm: ReaderViewModel, listening: Boolean, session: Boolean, rate: Float, onRate: (Float) -> Unit,
+    onToc: () -> Unit, onListen: () -> Unit, onSettings: () -> Unit,
+) {
     Surface(color = MaterialTheme.colorScheme.surfaceContainer, tonalElevation = 3.dp) {
         Column(Modifier.navigationBarsPadding().padding(vertical = 8.dp)) {
             val last = s.chapters.lastIndex.coerceAtLeast(1)
@@ -418,6 +622,15 @@ private fun BottomMenu(s: ReaderState, vm: ReaderViewModel, listening: Boolean, 
                 style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 20.dp),
             )
+            // The speed is within reach while a read-aloud session exists; the settings sheet has the same control.
+            if (session) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("语速", Modifier.padding(end = 16.dp), style = MaterialTheme.typography.labelLarge)
+                    FilledTonalIconButton(onClick = { onRate(rate - ReadAloud.RATE_STEP) }, enabled = rate > ReadAloud.MIN_RATE) { Text("慢") }
+                    Text("%.2f×".format(rate), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    FilledTonalIconButton(onClick = { onRate(rate + ReadAloud.RATE_STEP) }, enabled = rate < ReadAloud.MAX_RATE) { Text("快") }
+                }
+            }
             Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
                 MenuButton(Icons.AutoMirrored.Outlined.FormatListBulleted, "目录", onToc)
                 MenuButton(Icons.Outlined.Download, "缓存", { vm.cacheAhead() })
@@ -441,19 +654,29 @@ private fun MenuButton(icon: androidx.compose.ui.graphics.vector.ImageVector, la
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SwitchSheet(vm: ReaderViewModel, onDismiss: () -> Unit) {
-    var alts by remember { mutableStateOf<List<SearchBook>?>(null) }
-    LaunchedEffect(Unit) { alts = vm.alternatives() }
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Text("换源", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-        val list = alts
-        if (list == null) Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+    // Sources answer one by one; each is listed as soon as it has, instead of after the slowest one.
+    var list by remember { mutableStateOf<List<SearchBook>>(emptyList()) }
+    var searching by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) {
+        runCatching { vm.alternatives().collect { list = it } }
+        searching = false
+    }
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+        Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("换源", style = MaterialTheme.typography.titleMedium)
+            if (searching && list.isNotEmpty()) {
+                CircularProgressIndicator(Modifier.padding(start = 12.dp).size(16.dp), strokeWidth = 2.dp)
+                Text("继续搜索，已找到 ${list.size} 个", Modifier.padding(start = 8.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        if (list.isEmpty() && searching) Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         else if (list.isEmpty()) Text("其他书源里没有找到这本书", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-        else Column {
+        else Column(Modifier.verticalScroll(rememberScrollState())) {
             list.forEach { a ->
                 ListItem(
                     headlineContent = { Text(a.originName) },
                     supportingContent = { Text(a.latestChapterTitle?.let { "最新：$it" } ?: a.bookUrl, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    modifier = Modifier.pointerInput(a) { detectTapGestures { vm.switchTo(a); onDismiss() } },
+                    modifier = Modifier.pointerInput(a) { detectTapGestures { vm.switchTo(a, others = list); onDismiss() } },
                 )
             }
         }

@@ -9,14 +9,24 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.TextUnit
+import app.openread.tts.ReadAloud
 
 /** One screenful of a chapter: the slice of the chapter's display text that fits. */
 class Page(val start: Int, val end: Int, val text: AnnotatedString)
 
-class ChapterPages(val title: String, val pages: List<Page>) {
+/**
+ * A chapter cut into [pages]. [paragraphs] and [starts] describe the same text paragraph by paragraph (see
+ * [Paginator.paragraphs]), which is how the reader and reading aloud agree on where a spoken sentence is on screen.
+ */
+class ChapterPages(val title: String, val pages: List<Page>, val paragraphs: List<String> = emptyList(), val starts: IntArray = IntArray(0)) {
     /** The page that contains [offset]; the last page for a huge offset. */
     fun pageAt(offset: Int): Int =
         if (offset == Int.MAX_VALUE) pages.lastIndex else pages.indexOfLast { it.start <= offset }.coerceAtLeast(0)
+
+    /** Offset in the chapter's display text of character [char] of paragraph [paragraph]. */
+    fun offsetOf(paragraph: Int, char: Int): Int = if (starts.isEmpty()) 0 else starts[paragraph.coerceIn(0, starts.lastIndex)] + char
+
+    fun copyWith(paragraphs: List<String>, starts: IntArray) = ChapterPages(title, pages, paragraphs, starts)
 }
 
 object Paginator {
@@ -27,6 +37,32 @@ object Paginator {
         withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = titleSize)) { append(title) }
         append("\n\n")
         append(body(body))
+    }
+
+    /**
+     * What a chapter says, paragraph by paragraph: the title, then every non-blank line of [body], trimmed. Both the displayed
+     * text ([display], [body]) and reading aloud are made from these, so paragraph numbers mean the same to both.
+     */
+    fun paragraphs(title: String, body: String): List<String> = ReadAloud.paragraphs(title, body)
+
+    /** Where each of [paragraphs] starts in the text [display] builds (after the indent); the title is at 0. */
+    fun paragraphStarts(paragraphs: List<String>): IntArray {
+        val starts = IntArray(paragraphs.size)
+        var pos = paragraphs[0].length + 2 // the title and the blank line after it
+        for (i in 1 until paragraphs.size) {
+            pos += INDENT.length
+            starts[i] = pos
+            pos += paragraphs[i].length + 1 // the text and the line break
+        }
+        return starts
+    }
+
+    /** The paragraph, and the character in it, that offset [at] of the display text falls on; the next paragraph's start for a gap. */
+    fun locate(paragraphs: List<String>, starts: IntArray, at: Int): Pair<Int, Int> {
+        for (i in paragraphs.indices) {
+            if (at < starts[i] + paragraphs[i].length) return i to (at - starts[i]).coerceAtLeast(0)
+        }
+        return paragraphs.lastIndex to paragraphs.last().length
     }
 
     /** Paragraphs only, each with the first-line indent. */

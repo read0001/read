@@ -1,8 +1,8 @@
 {
-  "versionCode": 13,
-  "versionName": "1.0.12",
-  "notes": "新增听书：按段落朗读、自动读下一章、通知栏控制；系统语音不可用时（如鸿蒙卓易通）自动改用在线语音；离线语音默认关闭，可在阅读设置里手动开启并下载。最新章检测能识别“本章未完”类截断章。",
-  "url": "https://raw.githubusercontent.com/read0001/read/main/releases/openread-1.0.12.apk",
-  "size": 3260846,
-  "sha256": "c0723e682515d098d54f4856dc845ecc63d3e8a0be9f552747605f92d41d25b0"
+  "versionCode": 14,
+  "versionName": "1.0.13",
+  "notes": "听书：朗读时高亮正在读的句子并自动翻页/滚动，翻到哪页就从哪页读，语速可调到 3 倍（菜单里可直接调）。换源面板边搜边出，不用等全部书源；换源后会检测新书源的最新章，不完整时核对其余所有书源，并问你是否换到更完整的书源。",
+  "url": "https://raw.githubusercontent.com/read0001/read/main/releases/openread-1.0.13.apk",
+  "size": 3277230,
+  "sha256": "735fad3fc77175e42cbd995eae12c56a7f378335ab9d33447c48474141828fca"
 }
