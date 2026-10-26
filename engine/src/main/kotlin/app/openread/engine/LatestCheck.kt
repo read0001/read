@@ -20,6 +20,9 @@ object LatestCheck {
 
     private fun letters(s: String) = s.count { it.code in 0x4E00..0x9FFF }
 
+    /** Notices a site puts at the end of a page that is not the whole chapter. */
+    private val UNFINISHED = listOf("本章未完", "请点击下一页", "点击下一页继续", "未完待续，请")
+
     /** Null when the source's chapters cannot be read well enough to tell. */
     fun run(web: WebBook, book: Book, toc: List<Chapter>): Result? {
         val real = toc.filter { !it.isVolume }
@@ -37,6 +40,8 @@ object LatestCheck {
         // Only clear signs count: a source that splits chapters in pieces has short ones everywhere, and that is not padding.
         fun complete(i: Int): Boolean? {
             val t = read(i) ?: return null
+            // A page that says the chapter goes on is truncated, however long it is.
+            if (UNFINISHED.any { t.contains(it) }) return false
             return letters(t) >= CUT * average && !PreviewGuard.trim(t, ref).trimmed
         }
 
