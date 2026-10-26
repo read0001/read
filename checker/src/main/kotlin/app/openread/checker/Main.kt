@@ -81,7 +81,8 @@ private fun host(src: BookSource): String =
 private val unsupported = listOf("java.webView(", "java.startBrowser", "java.getVerificationCode", "java.openUrl(")
 
 internal fun usable(src: BookSource, blocklist: List<String>): String? {
-    val text = "${src.bookSourceName} ${src.bookSourceGroup} ${src.bookSourceComment} ${src.key}".lowercase()
+    // Name and group only: a comment or an address that happens to contain a word says nothing about the site.
+    val text = "${src.bookSourceName} ${src.bookSourceGroup}".lowercase()
     if (blocklist.any { text.contains(it) }) return "blocklisted"
     if (!src.enabled) return "disabled"
     if (!src.isText) return "not text"
