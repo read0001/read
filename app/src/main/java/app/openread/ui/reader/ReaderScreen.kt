@@ -38,6 +38,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.FormatListBulleted
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Pause
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SwapHoriz
@@ -86,6 +88,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.openread.container
+import app.openread.tts.ReadAloud
 import app.openread.data.PageMode
 import app.openread.data.ReaderPalette
 import app.openread.data.Settings
@@ -118,6 +121,17 @@ fun ReaderScreen(bookUrl: String, startIndex: Int?, onBack: () -> Unit) {
     BackHandler(enabled = menu) { menu = false }
     LaunchedEffect(s.message) { s.message?.let { snack.showSnackbar(it); vm.consumeMessage() } }
     LaunchedEffect(s.position.index, s.chapters.size) { if (s.chapters.isNotEmpty()) vm.prefetch(s.position.index) }
+    val ra by ReadAloud.state.collectAsState()
+    // Reading aloud moved to the next chapter: the page follows it.
+    LaunchedEffect(ra.chapterIndex) {
+        if (ra.playing && ra.bookUrl == s.book?.bookUrl && ra.chapterIndex >= 0 && ra.chapterIndex != s.position.index) vm.go(ra.chapterIndex)
+    }
+    // A page turn while reading aloud: read from the new place instead.
+    LaunchedEffect(s.position.index) {
+        if (ra.playing && ra.bookUrl == s.book?.bookUrl && ra.chapterIndex >= 0 && s.position.index != ra.chapterIndex) vm.readAloud(ctx)
+    }
+    LaunchedEffect(settings.readAloudRate) { ReadAloud.setRate(settings.readAloudRate) }
+    LaunchedEffect(ra.message) { ra.message?.let { snack.showSnackbar(it); ReadAloud.consumeMessage() } }
 
     Box(Modifier.fillMaxSize().background(bg)) {
         when {
@@ -144,7 +158,7 @@ fun ReaderScreen(bookUrl: String, startIndex: Int?, onBack: () -> Unit) {
             )
         }
         AnimatedVisibility(menu, Modifier.align(Alignment.BottomCenter), enter = fadeIn() + slideInVertically { it }, exit = fadeOut() + slideOutVertically { it }) {
-            BottomMenu(s, vm, onToc = { showToc = true }, onSettings = { showSettings = true })
+            BottomMenu(s, vm, listening = ra.playing, onToc = { showToc = true }, onListen = { vm.readAloud(ctx) }, onSettings = { showSettings = true })
         }
         androidx.compose.material3.SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 72.dp))
         if (s.busy) CircularProgressIndicator(Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(16.dp).size(24.dp), color = fg)
@@ -384,7 +398,7 @@ private fun ScrollReader(vm: ReaderViewModel, s: ReaderState, settings: Settings
 // ---- menus ---------------------------------------------------------------------------------------------------------
 
 @Composable
-private fun BottomMenu(s: ReaderState, vm: ReaderViewModel, onToc: () -> Unit, onSettings: () -> Unit) {
+private fun BottomMenu(s: ReaderState, vm: ReaderViewModel, listening: Boolean, onToc: () -> Unit, onListen: () -> Unit, onSettings: () -> Unit) {
     Surface(color = MaterialTheme.colorScheme.surfaceContainer, tonalElevation = 3.dp) {
         Column(Modifier.navigationBarsPadding().padding(vertical = 8.dp)) {
             val last = s.chapters.lastIndex.coerceAtLeast(1)
@@ -407,6 +421,7 @@ private fun BottomMenu(s: ReaderState, vm: ReaderViewModel, onToc: () -> Unit, o
             Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
                 MenuButton(Icons.AutoMirrored.Outlined.FormatListBulleted, "目录", onToc)
                 MenuButton(Icons.Outlined.Download, "缓存", { vm.cacheAhead() })
+                if (listening) MenuButton(Icons.Outlined.Pause, "暂停", onListen) else MenuButton(Icons.Outlined.PlayArrow, "听书", onListen)
                 MenuButton(Icons.Outlined.Settings, "设置", onSettings)
             }
         }

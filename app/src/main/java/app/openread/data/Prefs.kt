@@ -29,6 +29,9 @@ enum class ReaderPalette(val label: String, val bg: Long, val fg: Long) {
 
 enum class PageMode(val label: String) { Slide("左右翻页"), Scroll("上下滚动") }
 
+/** Who reads aloud: the device's speech engine, an online service, a downloaded offline model, or whichever works. */
+enum class VoiceEngine(val label: String) { Auto("自动"), System("系统"), Online("在线"), Offline("离线") }
+
 data class Settings(
     val themeMode: ThemeMode = ThemeMode.System,
     val dynamicColor: Boolean = true,
@@ -39,6 +42,13 @@ data class Settings(
     val keepScreenOn: Boolean = true,
     val brightness: Float = -1f,
     val autoSwitchSource: Boolean = true,
+    /** Speed of read-aloud, 1 is the engine's normal speed. */
+    val readAloudRate: Float = 1f,
+    val voiceEngine: VoiceEngine = VoiceEngine.Auto,
+    /** Address of the online speech service, with {{text}} where the text goes; blank is the built-in one. */
+    val onlineVoiceUrl: String = "",
+    /** The offline voice is something the reader turns on (and downloads) knowingly; it is never used while this is off. */
+    val offlineVoice: Boolean = false,
     val subscriptionBase: String = DEFAULT_BASE,
     val lastSubscriptionUpdate: Long = 0,
     val ignoredVersion: Int = 0,
@@ -60,6 +70,10 @@ class Prefs(private val context: Context) {
         val awake = booleanPreferencesKey("awake")
         val brightness = floatPreferencesKey("brightness")
         val autoSwitch = booleanPreferencesKey("auto_switch")
+        val ttsRate = floatPreferencesKey("tts_rate")
+        val ttsEngine = intPreferencesKey("tts_engine")
+        val ttsUrl = stringPreferencesKey("tts_url")
+        val ttsOffline = booleanPreferencesKey("tts_offline")
         val base = stringPreferencesKey("sub_base")
         val updated = longPreferencesKey("sub_updated")
         val ignored = intPreferencesKey("ignored_version")
@@ -78,6 +92,12 @@ class Prefs(private val context: Context) {
             keepScreenOn = p[K.awake] ?: d.keepScreenOn,
             brightness = p[K.brightness] ?: d.brightness,
             autoSwitchSource = p[K.autoSwitch] ?: d.autoSwitchSource,
+            readAloudRate = p[K.ttsRate] ?: d.readAloudRate,
+            // The offline choice only exists while the offline voice is on.
+            voiceEngine = VoiceEngine.entries.getOrElse(p[K.ttsEngine] ?: 0) { d.voiceEngine }
+                .let { if (it == VoiceEngine.Offline && p[K.ttsOffline] != true) VoiceEngine.Auto else it },
+            onlineVoiceUrl = p[K.ttsUrl] ?: d.onlineVoiceUrl,
+            offlineVoice = p[K.ttsOffline] ?: d.offlineVoice,
             subscriptionBase = p[K.base] ?: d.subscriptionBase,
             lastSubscriptionUpdate = p[K.updated] ?: 0,
             ignoredVersion = p[K.ignored] ?: 0,
@@ -99,6 +119,10 @@ class Prefs(private val context: Context) {
             p[K.awake] = next.keepScreenOn
             p[K.brightness] = next.brightness
             p[K.autoSwitch] = next.autoSwitchSource
+            p[K.ttsRate] = next.readAloudRate
+            p[K.ttsEngine] = next.voiceEngine.ordinal
+            p[K.ttsUrl] = next.onlineVoiceUrl
+            p[K.ttsOffline] = next.offlineVoice
             p[K.base] = next.subscriptionBase
             p[K.updated] = next.lastSubscriptionUpdate
             p[K.ignored] = next.ignoredVersion

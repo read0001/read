@@ -1,8 +1,8 @@
 {
-  "versionCode": 12,
-  "versionName": "1.0.11",
-  "notes": "修复一批问题：没网时不再丢掉已下载的更新包；前台下载时切到后台也会通知；核对最新章时换了书源不再被旧结果覆盖，书架里的书只提示不自动换；请假条一类的短章不再被当成凑数；搜索里曾出错的源答复后恢复；屏蔽词不再误伤正常书源。",
-  "url": "https://raw.githubusercontent.com/read0001/read/main/releases/openread-1.0.11.apk",
-  "size": 3227982,
-  "sha256": "fa7dadb0892e4e01321b83983ea92b07678ad5b6224a2ba0c701d9874b4b300d"
+  "versionCode": 13,
+  "versionName": "1.0.12",
+  "notes": "新增听书：按段落朗读、自动读下一章、通知栏控制；系统语音不可用时（如鸿蒙卓易通）自动改用在线语音；离线语音默认关闭，可在阅读设置里手动开启并下载。最新章检测能识别“本章未完”类截断章。",
+  "url": "https://raw.githubusercontent.com/read0001/read/main/releases/openread-1.0.12.apk",
+  "size": 3260846,
+  "sha256": "c0723e682515d098d54f4856dc845ecc63d3e8a0be9f552747605f92d41d25b0"
 }

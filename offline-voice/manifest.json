@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "libs": {
+    "arm64-v8a": {
+      "file": "libsherpa-onnx-jni-arm64-v8a.so.gz",
+      "size": 8918349,
+      "rawSize": 24122552,
+      "sha256": "7df00e916fcf9659645f58e5f182d0139b81c84891fa3d19041583296d6d3911"
+    },
+    "armeabi-v7a": {
+      "file": "libsherpa-onnx-jni-armeabi-v7a.so.gz",
+      "size": 8036392,
+      "rawSize": 16459696,
+      "sha256": "21c6b33ea21e8acf7d87de8ce0fb4398209027624c6a82893b2de26788e68fec"
+    }
+  },
+  "model": {
+    "id": "vits-piper-zh_CN-xiao_ya-medium-int8",
+    "files": [
+      {
+        "name": "zh_CN-xiao_ya-medium.onnx",
+        "file": "zh_CN-xiao_ya-medium.onnx.gz",
+        "size": 13133942,
+        "rawSize": 18652795,
+        "sha256": "d4145488f47914614116e4f77338532d827cfccf5f5d7a58c15c5e54cc5434ba"
+      },
+      {
+        "name": "tokens.txt",
+        "file": "tokens.txt.gz",
+        "size": 339,
+        "rawSize": 485,
+        "sha256": "e9e6d2838a2676749adbf0376c4cf3c3cd28eb27ed953dcc2adcab8db3c33ba7"
+      },
+      {
+        "name": "lexicon.txt",
+        "file": "lexicon.txt.gz",
+        "size": 600574,
+        "rawSize": 2064505,
+        "sha256": "003e76f89fec389ec109b557f47cc315a1ac31a99091f0cc9d15949f9024416b"
+      },
+      {
+        "name": "phone.fst",
+        "file": "phone.fst.gz",
+        "size": 3937,
+        "rawSize": 88630,
+        "sha256": "1ac2b6fa56b1442320c4de7db08353bab8963a2b57f365eebcdd3a2d3562f8d7"
+      },
+      {
+        "name": "date.fst",
+        "file": "date.fst.gz",
+        "size": 2911,
+        "rawSize": 59154,
+        "sha256": "eb8aa079ae3cb81d8f4404992f39d61a0cb990947512b5b8d1e54d1f6980e718"
+      },
+      {
+        "name": "number.fst",
+        "file": "number.fst.gz",
+        "size": 7719,
+        "rawSize": 64482,
+        "sha256": "743f402181fcfebf76cc2f0546b71fa26476e626fbe4e460fb7b4c3a7a8bd5bd"
+      }
+    ]
+  }
+}

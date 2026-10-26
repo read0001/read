@@ -10,6 +10,9 @@ plugins {
 // Override with -PsubscriptionRepo=owner/repo -PsubscriptionBranch=main if the repository moves.
 val subscriptionRepo = (project.findProperty("subscriptionRepo") as String?) ?: "read0001/read"
 val subscriptionBranch = (project.findProperty("subscriptionBranch") as String?) ?: "main"
+// Where the offline read-aloud voice is downloaded from (scripts/pack-offline-voice.py writes what goes there).
+// Override with -PofflineVoiceBase=http://10.0.2.2:8000/ to test against a local server.
+val offlineVoiceBase = (project.findProperty("offlineVoiceBase") as String?) ?: "https://raw.githubusercontent.com/$subscriptionRepo/$subscriptionBranch/offline-voice/"
 
 android {
     namespace = "app.openread"
@@ -20,10 +23,11 @@ android {
         minSdk = 26
         targetSdk = 35
         // Override with -PappVersionCode=… -PappVersionName=… (the update flow is tested with a newer build).
-        versionCode = (project.findProperty("appVersionCode") as String?)?.toInt() ?: 12
-        versionName = (project.findProperty("appVersionName") as String?) ?: "1.0.11"
+        versionCode = (project.findProperty("appVersionCode") as String?)?.toInt() ?: 13
+        versionName = (project.findProperty("appVersionName") as String?) ?: "1.0.12"
         buildConfigField("String", "SUBSCRIPTION_REPO", "\"$subscriptionRepo\"")
         buildConfigField("String", "SUBSCRIPTION_BRANCH", "\"$subscriptionBranch\"")
+        buildConfigField("String", "OFFLINE_VOICE_BASE", "\"$offlineVoiceBase\"")
     }
 
     signingConfigs {

@@ -19,3 +19,5 @@
 -dontwarn org.openjsse.**
 -dontwarn org.bouncycastle.**
 -dontwarn org.conscrypt.**
+# sherpa-onnx's native library looks these classes and their fields up by name (see SherpaLibrary).
+-keep class com.k2fsa.sherpa.onnx.** { *; }

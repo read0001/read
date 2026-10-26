@@ -1,5 +1,6 @@
 package app.openread.ui.reader
 
+import android.content.Context
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -8,6 +9,7 @@ import app.openread.data.BookRow
 import app.openread.data.ChapterRow
 import app.openread.data.Settings
 import app.openread.engine.SearchBook
+import app.openread.tts.ReadAloud
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -131,6 +133,15 @@ class ReaderViewModel(private val c: AppContainer, bookUrl: String, private val 
     }
 
     fun reload(idx: Int) = ensure(idx, force = true)
+
+    /** The listen button: pauses or resumes the session when it is this chapter, otherwise starts reading from the current page. */
+    fun readAloud(context: Context) {
+        val s = _state.value
+        val book = s.book ?: return
+        val ra = ReadAloud.state.value
+        if (ra.active && ra.bookUrl == book.bookUrl && ra.chapterIndex == s.position.index) ReadAloud.toggle()
+        else ReadAloud.play(context, c, book.bookUrl, s.chapters, s.position.index, s.position.offset, settings.value.readAloudRate)
+    }
 
     fun consumeMessage() = _state.update { it.copy(message = null) }
 
