@@ -2636,6 +2636,53 @@
     "weight": 0
   },
   {
+    "bookSourceGroup": "源论坛",
+    "bookSourceName": "看书网",
+    "bookSourceType": 0,
+    "bookSourceUrl": "https://www.kanshuw.com",
+    "customButton": false,
+    "customOrder": 10,
+    "enabled": true,
+    "enabledCookieJar": true,
+    "enabledExplore": true,
+    "eventListener": false,
+    "lastUpdateTime": 1733932666780,
+    "respondTime": 3634,
+    "ruleBookInfo": {
+      "author": "class.row book_info@a[0]@text",
+      "coverUrl": "class.row book_info@img@src",
+      "init": "",
+      "intro": "class.row book_info@id.intro_pc@oweText",
+      "kind": "class.title@a[1]@text",
+      "lastChapter": "class.row book_info@a[2]@text",
+      "name": "class.row book_info@h1@text##免费阅读.*",
+      "tocUrl": ""
+    },
+    "ruleContent": {
+      "content": ".font_max@html##第\\(\\d+/\\d+\\)页",
+      "nextContentUrl": "text.下一章@href",
+      "replaceRegex": "##[a-zA-Z0-9-]+[a-zA-Z0-9-].*\\.[a-zA-Z0-9-].*"
+    },
+    "ruleSearch": {
+      "author": "span@text",
+      "bookList": ".row@dl",
+      "bookUrl": "a[0]@href",
+      "checkKeyWord": "我的",
+      "coverUrl": "tag.dt@tag.a@img@src",
+      "kind": "h3@text##\\[|\\].*",
+      "lastChapter": "a[-1]@text",
+      "name": "h3@text##\\[|.*\\]|免费阅读.*"
+    },
+    "ruleToc": {
+      "chapterList": ".row[-1]@a",
+      "chapterName": "text",
+      "chapterUrl": "href",
+      "nextTocUrl": "class.pages@tag.ul@tag.li.!0:1:-1@tag.a@href"
+    },
+    "searchUrl": "/search.php?q={{key}}",
+    "weight": 0
+  },
+  {
     "bookSourceGroup": "自写0625",
     "bookSourceName": "开心文学网",
     "bookSourceType": 0,
@@ -13954,58 +14001,6 @@
     "exploreUrl": "[{\"title\":\"榜单\",\"url\":\"\",\"style\":{\"layout_flexBasisPercent\":1,\"layout_flexGrow\":1}},\n{\"title\":\"男生人气\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&sortby=lastweek_salenum&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.4,\"layout_flexGrow\":1}},\n{\"title\":\"男生新书\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.4,\"layout_flexGrow\":1}},\n{\"title\":\"女生人气\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&sortby=lastweek_salenum&paegsize=20&sex_flag=nu&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.4,\"layout_flexGrow\":1}},\n{\"title\":\"女生新书\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&sortby=&paegsize=20&sex_flag=nu&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.4,\"layout_flexGrow\":1}},\n{\"title\":\"分类\",\"url\":\"\",\"style\":{\"layout_flexBasisPercent\":1,\"layout_flexGrow\":1}},\n{\"title\":\"爱情婚姻\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=1&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"商战风云\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=2&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"职场励志\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=3&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"官场沉浮\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=4&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"现实百态\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=5&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"八卦杂谈\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=6&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"东方玄幻\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=13&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"异世大陆\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=14&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"西方奇幻\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=15&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"异术超能\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=16&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"奇幻修真\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=17&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"古典仙侠\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=18&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"架空历史\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=19&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"历史传纪\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=20&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"谈古论今\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=21&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"军事战争\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=22&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"军旅生活\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=23&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"抗战烽火\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=24&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"未来世界\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=25&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"星际战争\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=26&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"古武机甲\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=27&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"灵异奇谈\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=28&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"恐怖惊悚\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=29&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"悬疑探险\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=30&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"其他类别\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=31&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"都市异能\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=32&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"转世重生\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=33&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"经典武侠\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=34&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"侦探推理\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=35&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"末日危临\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=36&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"电子竞技\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=37&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"虚拟网游\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=38&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"体育竞技\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=39&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"现代修真\",\"url\":\"https://m.hongshu.com/bookajax/search.do?method=search&classids=40&paegsize=20&sex_flag=nan&pagenum={{page}}\",\"style\":{\"layout_flexBasisPercent\":0.29}}]"
   },
   {
-    "ruleExplore": {
-      "author": "p@textNodes##\\[.*\\]",
-      "kind": "span:contains(分类)@text##分类：",
-      "bookUrl": "a@href",
-      "name": "a@text",
-      "bookList": ".line",
-      "lastChapter": "span:contains(最新)@text##最新："
-    },
-    "bookSourceType": 0,
-    "ruleSearch": {
-      "author": "p@textNodes##\\[.*\\]",
-      "bookList": ".line",
-      "lastChapter": "span:contains(最新)@text##最新：",
-      "coverUrl": ".book-img img@src",
-      "kind": "span:contains(分类)@text##分类：",
-      "bookUrl": "a@href",
-      "name": "a@text"
-    },
-    "ruleBookInfo": {
-      "author": "p:contains(作者)@text##作者：",
-      "tocUrl": "text.在线阅读@href",
-      "lastChapter": "p:contains(最新)a@text",
-      "wordCount": "p:contains(更新)@text##更新：",
-      "intro": ".intro_info@text",
-      "coverUrl": ".book-img img@src",
-      "kind": "p:contains(分类)@text##分类：",
-      "name": "h2@text"
-    },
-    "ruleContent": {
-      "content": ".nr_nr@html##【(.*)章(.*)】|看~精(.*)|百/度(.*)|作者：(.*)|第(.*)章(.*)|..-..-..|本章未(.*)|(.*)--(.*)|strong",
-      "nextContentUrl": "text.下 页@href",
-      "replaceRegex": "##下一章继续阅读"
-    },
-    "searchUrl": "/s.php,{method:\"post\",body:\"type=articlename&s={{key}}&submit=\"}",
-    "weight": 0,
-    "enabledExplore": true,
-    "header": "{\n  \"User-Agent\": \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\",\n  \"Referer\": \"https://m.41nr.com/\"\n}",
-    "ruleToc": {
-      "chapterUrl": "a@href",
-      "chapterList": ".chapter@li@a",
-      "nextTocUrl": "text.下一页@href",
-      "chapterName": "a@text"
-    },
-    "enabled": true,
-    "bookSourceUrl": "https://m.41nr.com/",
-    "lastUpdateTime": 1763881345492,
-    "bookSourceName": "男人小说",
-    "bookSourceGroup": "小说",
-    "exploreUrl": "    总点击榜 ::/top/allvisit_{{page}}/\n　月点击榜 ::/top/monthvisit_{{page}}/\n　周点击榜 ::/top/weekvisit_{{page}}/\n　字数排行 ::/top/size_{{page}}/\n　最新入库 ::/top/postdate_{{page}}/\n　最近更新::/top/lastupdate_{{page}}/\n\t🖤🤍🖤🤍🖤🤍🖤🤍🖤🤍🖤🤍\n    玄幻魔法<a ::/lists/1-{{page}}.html\n　武侠修真<a ::/lists/2-{{page}}.html\n　都市言情<a ::/lists/3-{{page}}.html\n　历史军事<a ::/lists/4-{{page}}.html\n　侦探推理<a ::/lists/5-{{page}}.html\n　网游动漫<a ::/lists/6-{{page}}.html\n　科幻小说<a ::/lists/7-{{page}}.html\n　恐怖灵异<a ::/lists/8-{{page}}.html\n　女生小说<a ::/lists/9-{{page}}.html\n　其他书籍<a ::/lists/10-{{page}}.html\n　男人小说<a ::/lists/11-{{page}}.html\n　经济管理<a ::/lists/12-{{page}}.html\n　励志成功<a ::/lists/13-{{page}}.html\n　人物传记<a ::/lists/14-{{page}}.html\n　传统国学<a ::/lists/15-{{page}}.html\n　家庭生活<a ::/lists/16-{{page}}.html\n　婚姻恋爱<a ::/lists/17-{{page}}.html\n　养生保健<a ::/lists/18-{{page}}.html\n　文学艺术::/lists/19-{{page}}.html",
-    "customOrder": 188
-  },
-  {
     "bookSourceGroup": "2025112去重校验bycoco",
     "bookSourceName": "全本同人",
     "bookSourceUrl": "https://www.qbtr.cc喜静#397c802e68",
@@ -15215,55 +15210,6 @@
     },
     "searchUrl": "@js:'/search/' + java.encodeURI('' + key)",
     "weight": 0
-  },
-  {
-    "bookSourceGroup": "a",
-    "bookSourceName": "7wav",
-    "bookSourceUrl": "https://www.7wav.com#🎃#e53003616c",
-    "enabled": true,
-    "enabledCookieJar": true,
-    "enabledExplore": true,
-    "exploreUrl": "玄幻魔法::https://www.7wav.com/xs/1-default-0-0-0-0-0-0-{{page}}.html\n武侠修真::https://www.7wav.com/xs/2-default-0-0-0-0-0-0-{{page}}.html\n穿越小说::https://www.7wav.com/xs/3-default-0-0-0-0-0-0-{{page}}.html\n都市言情::https://www.7wav.com/xs/4-default-0-0-0-0-0-0-{{page}}.html\n历史军事::https://www.7wav.com/xs/5-default-0-0-0-0-0-0-{{page}}.html\n科幻小说::https://www.7wav.com/xs/6-default-0-0-0-0-0-0-{{page}}.html\n网游动漫::https://www.7wav.com/xs/7-default-0-0-0-0-0-0-{{page}}.html\n耽美同人::https://www.7wav.com/xs/8-default-0-0-0-0-0-0-{{page}}.html\n侦探推理::https://www.7wav.com/xs/9-default-0-0-0-0-0-0-{{page}}.html\n恐怖灵异::https://www.7wav.com/xs/10-default-0-0-0-0-0-0-{{page}}.html\n其他类型::https://www.7wav.com/xs/11-default-0-0-0-0-0-0-{{page}}.html\n总点击::https://www.7wav.com/xs/quanbu-allvisit-0-0-0-0-0-0-{{page}}.html\n月点击::https://www.7wav.com/xs/quanbu-monthvisit-0-0-0-0-0-0-{{page}}.html\n周点击::https://www.7wav.com/xs/quanbu-weekvisit-0-0-0-0-0-0-{{page}}.html\n日点击::https://www.7wav.com/xs/quanbu-dayvisit-0-0-0-0-0-0-{{page}}.html\n总推荐::https://www.7wav.com/xs/quanbu-allvote-0-0-0-0-0-0-{{page}}.html\n月推荐::https://www.7wav.com/xs/quanbu-monthvote-0-0-0-0-0-0-{{page}}.html\n周推荐::https://www.7wav.com/xs/quanbu-weekvote-0-0-0-0-0-0-{{page}}.html\n日推荐::https://www.7wav.com/xs/quanbu-dayvote-0-0-0-0-0-0-{{page}}.html\n收藏数::https://www.7wav.com/xs/quanbu-goodnum-0-0-0-0-0-0-{{page}}.html\n字数::https://www.7wav.com/xs/quanbu-size-0-0-0-0-0-0-{{page}}.html\n入站时间::https://www.7wav.com/xs/quanbu-postdate-0-0-0-0-0-0-{{page}}.html\n30万以下::https://www.7wav.com/xs/quanbu-default-0-1-0-0-0-0-{{page}}.html\n30万-50万::https://www.7wav.com/xs/quanbu-default-0-2-0-0-0-0-{{page}}.html\n50万-100万::https://www.7wav.com/xs/quanbu-default-0-3-0-0-0-0-{{page}}.html\n100万-200万::https://www.7wav.com/xs/quanbu-default-0-4-0-0-0-0-{{page}}.html\n200万以上::https://www.7wav.com/xs/quanbu-default-0-5-0-0-0-0-{{page}}.html\n连载中::https://www.7wav.com/xs/quanbu-default-0-0-0-0-1-0-{{page}}.html\n已完成::https://www.7wav.com/xs/quanbu-default-0-0-0-0-2-0-{{page}}.html",
-    "ruleBookInfo": {
-      "author": "[property$=author]@content",
-      "coverUrl": "",
-      "intro": "h3@text##.*.简介：|您要是觉得.*",
-      "kind": "[property$=category]@content&&[property$=status]@content",
-      "lastChapter": "[property$=latest_chapter_name]@content",
-      "name": "[property$=book_name]@content",
-      "tocUrl": "text.请访问手机版@href",
-      "wordCount": "[property$=update_time]@content"
-    },
-    "ruleContent": {
-      "content": "id.nr@textNodes"
-    },
-    "ruleExplore": {
-      "author": "dd.1@span@text",
-      "bookList": "class.sitebox@dl",
-      "bookUrl": "h3@a@href",
-      "coverUrl": "img@src",
-      "intro": "dd.2@text",
-      "kind": "span.uptime@text",
-      "lastChapter": "dd.3@a@text",
-      "name": "h3@a@text"
-    },
-    "ruleSearch": {
-      "author": "p.s3@text",
-      "bookList": "div.toplist@li",
-      "bookUrl": "p.s1@a@href",
-      "kind": "p.s6@text&&p.s5@text",
-      "lastChapter": "p.s2@a@text",
-      "name": "p.s1@a@text",
-      "wordCount": "p.s4@text"
-    },
-    "ruleToc": {
-      "chapterList": "class.lb fk@li",
-      "chapterName": "a@text##本页章节列表结束！|没有更多分页了！",
-      "chapterUrl": "a@href",
-      "nextTocUrl": ".showpage.0@ul@a@href"
-    },
-    "searchUrl": "/modules/article/search.php?action=login&searchkey={{key}}&page={{page}},{\n  \"charset\": \"gbk\"\n}",
-    "customOrder": 999999999
   },
   {
     "bookSourceUrl": "https://www.56zw.com已整理",
