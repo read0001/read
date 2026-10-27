@@ -106,6 +106,7 @@ import app.openread.data.PageMode
 import app.openread.data.ReaderPalette
 import app.openread.data.Settings
 import app.openread.engine.SearchBook
+import app.openread.ui.components.DataAskDialog
 import app.openread.ui.components.SwitchOfferDialog
 import app.openread.ui.components.factory
 import app.openread.ui.detail.TocSheet
@@ -186,6 +187,7 @@ fun ReaderScreen(bookUrl: String, startIndex: Int?, onBack: () -> Unit) {
     if (showSettings) SettingsSheet(settings, vm::updateSettings) { showSettings = false }
     if (showSwitch) SwitchSheet(vm) { showSwitch = false }
     s.offer?.let { SwitchOfferDialog(it, onSwitch = vm::acceptOffer, onDismiss = vm::dismissOffer) }
+    DataAskDialog(vm.dataAsk)
 }
 
 /** Immersive reading, brightness and keep-awake, undone when the reader closes. */

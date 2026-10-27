@@ -33,6 +33,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -50,14 +51,21 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import app.openread.AppContainer
 import app.openread.container
 import app.openread.data.BookRow
+import app.openread.data.ShelfOffer
+import app.openread.data.SwitchOffer
 import app.openread.ui.components.BookCover
+import app.openread.ui.components.DataAsk
+import app.openread.ui.components.DataAskDialog
 import app.openread.ui.components.EmptyState
+import app.openread.ui.components.SwitchOfferDialog
 import app.openread.ui.components.Unread
 import app.openread.ui.components.factory
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class ShelfViewModel(private val c: AppContainer) : ViewModel() {
@@ -65,16 +73,83 @@ class ShelfViewModel(private val c: AppContainer) : ViewModel() {
     private val _refreshing = MutableStateFlow(false)
     val refreshing: StateFlow<Boolean> = _refreshing
 
-    /** Returns how many books have new chapters. */
-    fun refresh(done: (Int) -> Unit) {
+    /** While the sources are being checked in the background: how many books are done, of how many; otherwise null. */
+    private val _checking = MutableStateFlow<Pair<Int, Int>?>(null)
+    val checking: StateFlow<Pair<Int, Int>?> = _checking
+
+    /** Books for which a clearly better source was found; the reader is asked about them one at a time. */
+    private val _offers = MutableStateFlow<List<ShelfOffer>>(emptyList())
+    val offers: StateFlow<List<ShelfOffer>> = _offers
+
+    private val _message = MutableStateFlow<String?>(null)
+    val message: StateFlow<String?> = _message
+
+    private var verifyJob: Job? = null
+    private var verifyRun = 0
+
+    /** The background check searches every source: on mobile data it waits for the reader's yes. */
+    val dataAsk = DataAsk { c.network.unmetered() }
+
+    /**
+     * A refresh has two parts. First every book's current source is read (new chapters; [done] hears how many books have some
+     * and how many current sources could not be read). Then, quietly in the background, the newest chapter of the current
+     * source is checked and all sources are searched and checked for a better one (see [Library.verifyShelf]).
+     */
+    fun refresh(done: (news: Int, unreachable: Int) -> Unit) {
         if (_refreshing.value) return
         viewModelScope.launch {
             _refreshing.value = true
-            val n = runCatching { c.library.checkUpdates() }.getOrDefault(0)
+            val r = runCatching { c.library.checkUpdates() }.getOrNull()
             _refreshing.value = false
-            done(n)
+            done(r?.news ?: 0, r?.unreachable?.size ?: 0)
+            if (r != null) verify(r.unreachable)
         }
     }
+
+    private fun verify(unreachable: Set<String>) {
+        verifyJob?.cancel()
+        val run = ++verifyRun
+        verifyJob = viewModelScope.launch {
+            _offers.value = emptyList()
+            val books = c.library.shelfSnapshot()
+            if (books.isEmpty()) return@launch
+            if (!dataAsk.allowed()) { _message.value = "没有核对书源。连上 Wi-Fi 后再刷新，就会在后台核对"; return@launch }
+            try {
+                c.library.verifyShelf(books, unreachable, onProgress = { d, t -> if (run == verifyRun) _checking.value = d to t }, onOffer = { o -> _offers.update { it + o } })
+            } finally {
+                // A newer run may already be showing its own progress; only the latest one clears it.
+                if (run == verifyRun) _checking.value = null
+            }
+        }
+    }
+
+    /** Moves the book, if it is still on the shelf and still on the source the offer was made for. */
+    fun acceptOffer(o: ShelfOffer) {
+        _offers.update { it - o }
+        viewModelScope.launch {
+            val row = c.library.book(o.book.bookUrl)
+            _message.value = when {
+                row == null -> "《${o.book.name}》已经不在书架上了"
+                row.origin != o.book.origin -> "《${o.book.name}》已经换过书源了，请重新刷新核对"
+                else -> try {
+                    c.library.switchTo(row, o.offer.target)
+                    "《${o.book.name}》已换到 ${o.offer.target.originName}"
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    "换源失败：${e.message}"
+                }
+            }
+        }
+    }
+
+    /** Turned down: the same offer is not made again for a day. */
+    fun dismissOffer(o: ShelfOffer) {
+        c.library.declineOffer(o)
+        _offers.update { it - o }
+    }
+
+    fun consumeMessage() { _message.value = null }
 
     fun remove(book: BookRow) {
         viewModelScope.launch { c.library.remove(book.bookUrl) }
@@ -88,10 +163,22 @@ fun ShelfScreen(onOpen: (BookRow) -> Unit, onDetail: (BookRow) -> Unit, onSearch
     val vm: ShelfViewModel = viewModel(factory = factory { ShelfViewModel(ctx.container) })
     val books by vm.books.collectAsState()
     val refreshing by vm.refreshing.collectAsState()
+    val checking by vm.checking.collectAsState()
+    val offers by vm.offers.collectAsState()
+    val message by vm.message.collectAsState()
     val snack = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val refresh = {
-        vm.refresh { n -> scope.launch { snack.showSnackbar(if (n > 0) "$n 本书有更新" else "没有新章节") } }
+        vm.refresh { n, down ->
+            val text = (if (n > 0) "$n 本书有更新" else "没有新章节") + if (down > 0) "；$down 本书的书源打不开" else ""
+            scope.launch { snack.showSnackbar(text) }
+        }
+    }
+    LaunchedEffect(message) { message?.let { snack.showSnackbar(it); vm.consumeMessage() } }
+    DataAskDialog(vm.dataAsk)
+    // One question at a time, naming the book.
+    offers.firstOrNull()?.let { o ->
+        SwitchOfferDialog(SwitchOffer(o.offer.target, "《${o.book.name}》\n\n${o.offer.message}"), onSwitch = { vm.acceptOffer(o) }, onDismiss = { vm.dismissOffer(o) })
     }
 
     Scaffold(
@@ -114,7 +201,14 @@ fun ShelfScreen(onOpen: (BookRow) -> Unit, onDetail: (BookRow) -> Unit, onSearch
                 "书架还是空的", "搜索想看的书，或者去发现页逛逛",
                 Modifier.padding(pad),
             ) { TextButton(onClick = onSearch) { Text("搜索") }; }
-            else -> PullToRefreshBox(isRefreshing = refreshing, onRefresh = { refresh() }, modifier = Modifier.padding(pad).fillMaxSize()) {
+            else -> Column(Modifier.padding(pad).fillMaxSize()) {
+              checking?.let { (done, total) ->
+                Text(
+                    "正在后台核对书源和最新章（${done}/${total} 本）…", style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+              }
+              PullToRefreshBox(isRefreshing = refreshing, onRefresh = { refresh() }, modifier = Modifier.weight(1f).fillMaxWidth()) {
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(104.dp),
                     contentPadding = PaddingValues(16.dp),
@@ -124,6 +218,7 @@ fun ShelfScreen(onOpen: (BookRow) -> Unit, onDetail: (BookRow) -> Unit, onSearch
                 ) {
                     items(list, key = { it.bookUrl }) { b -> ShelfItem(b, onOpen = { onOpen(b) }, onDetail = { onDetail(b) }, onRemove = { vm.remove(b) }) }
                 }
+              }
             }
         }
     }

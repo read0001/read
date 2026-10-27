@@ -10,6 +10,7 @@ import app.openread.data.ChapterRow
 import app.openread.data.Settings
 import app.openread.data.SwitchOffer
 import app.openread.data.betterLine
+import app.openread.ui.components.DataAsk
 import app.openread.data.truncatedNote
 import app.openread.engine.SearchBook
 import app.openread.tts.ReadAloud
@@ -219,6 +220,9 @@ class ReaderViewModel(private val c: AppContainer, bookUrl: String, private val 
     private var checkJob: Job? = null
     private var lastOthers: List<SearchBook> = emptyList()
 
+    /** Checking every other source is heavy: on mobile data it waits for the reader's yes. */
+    val dataAsk = DataAsk { c.network.unmetered() }
+
     /**
      * The source the book was just moved to may end in teasers padded with other novels (see LatestCheck), so its newest
      * chapters are checked now, in the background. If they are teasers, the other sources are checked too and, when one is
@@ -230,14 +234,19 @@ class ReaderViewModel(private val c: AppContainer, bookUrl: String, private val 
         checkJob = viewModelScope.launch {
             val mine = withTimeoutOrNull(90_000) { c.library.checkLatest(target) } ?: return@launch
             if (mine.complete || currentUrl != url) return@launch // the reader may have moved on to yet another source meanwhile
+            if (others.isNotEmpty() && !dataAsk.allowed()) {
+                // The question may have been open a long time: say it only if this is still the book's source.
+                if (currentUrl == url) _state.update { it.copy(message = truncatedNote(target.originName, mine) + "当前不是 Wi-Fi，没有核对其他书源。") }
+                return@launch
+            }
             val found = if (others.isEmpty()) null else c.library.findCompleteSource(mine, others) { _, _ -> }
             if (currentUrl != url) return@launch
             val better = found?.better
             _state.update {
                 when {
-                    better != null -> it.copy(offer = SwitchOffer(better.source, truncatedNote(target, mine) + betterLine(better) + "\n\n要切换过去吗？"))
-                    found == null -> it.copy(message = truncatedNote(target, mine) + "可以再换个书源。")
-                    else -> it.copy(message = truncatedNote(target, mine) + "已核对 ${found.checked} 个其他书源，没有更完整的。")
+                    better != null -> it.copy(offer = SwitchOffer(better.source, truncatedNote(target.originName, mine) + betterLine(better) + "\n\n要切换过去吗？"))
+                    found == null -> it.copy(message = truncatedNote(target.originName, mine) + "可以再换个书源。")
+                    else -> it.copy(message = truncatedNote(target.originName, mine) + "已核对 ${found.checked} 个其他书源，没有更完整的。")
                 }
             }
         }

@@ -80,9 +80,15 @@ class BetterSource(val source: SearchBook, val result: app.openread.engine.Lates
 /** What the reader is asked once a better source has been found: [message] says why, [target] is where to go. */
 class SwitchOffer(val target: SearchBook, val message: String)
 
+/** What a shelf refresh found: how many books have new chapters, and the books whose current source could not be read. */
+class UpdateCheck(val news: Int, val unreachable: Set<String>)
+
+/** A shelf book for which a clearly better source was found; the reader is asked before anything moves. */
+class ShelfOffer(val book: BookRow, val offer: SwitchOffer)
+
 /** What to tell the reader about a source whose newest chapters are padding with other novels. */
-fun truncatedNote(current: SearchBook, mine: app.openread.engine.LatestCheck.Result) =
-    "「${current.originName}」的最新几章不完整（完整到「${mine.completeTitle}」，之后是别的小说混进来的内容）。"
+fun truncatedNote(originName: String, mine: app.openread.engine.LatestCheck.Result) =
+    "「$originName」的最新几章不完整（完整到「${mine.completeTitle}」，之后是别的小说混进来的内容）。"
 
 /** The sentence about the source that is better. */
 fun betterLine(better: BetterSource) = "「${better.source.originName}」的最新章是完整的，到「${better.result.completeTitle}」。"
@@ -95,6 +101,7 @@ private const val REST_MS = 24 * 3600_000L
 private const val UNKNOWN_MS = 6_000L
 private const val ENOUGH_HITS = 10
 private const val LATEST_CHECK_TTL_MS = 3600_000L
+private const val DECLINE_MS = 24 * 3600_000L
 
 /** Talks to the sources: search across many at once, open one book, run the health probe. */
 class Engine(val http: Http, private val sources: SourceRepo, private val health: HealthDao) {
@@ -233,17 +240,27 @@ class Library(private val context: Context, private val db: AppDb, private val e
     /** Checks of the newest chapter by book address, kept for an hour: reopening the page, or switching source, must not redo them. */
     private val latestChecks = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, app.openread.engine.LatestCheck.Result>>()
 
-    /** Whether [search]'s newest chapter is complete or a teaser, and the last complete one if not; null when it cannot be told. */
-    suspend fun checkLatest(search: SearchBook): app.openread.engine.LatestCheck.Result? = withContext(Dispatchers.IO) {
-        val key = search.origin + "\u0000" + search.bookUrl
-        latestChecks[key]?.takeIf { System.currentTimeMillis() - it.first < LATEST_CHECK_TTL_MS }?.let { return@withContext it.second }
-        runCatching {
-            val web = engine.web(search.origin) ?: return@runCatching null
-            val book = Book.from(search)
-            web.bookInfo(book)
-            app.openread.engine.LatestCheck.run(web, book, web.chapters(book))
-        }.getOrNull()?.also { latestChecks[key] = System.currentTimeMillis() to it }
+    private suspend fun latestOf(key: String, force: Boolean, load: suspend () -> app.openread.engine.LatestCheck.Result?): app.openread.engine.LatestCheck.Result? = withContext(Dispatchers.IO) {
+        if (!force) latestChecks[key]?.takeIf { System.currentTimeMillis() - it.first < LATEST_CHECK_TTL_MS }?.let { return@withContext it.second }
+        runCatching { load() }.getOrNull()?.also { latestChecks[key] = System.currentTimeMillis() to it }
     }
+
+    /**
+     * Whether [search]'s newest chapter is complete or a teaser, and the last complete one if not; null when it cannot be told.
+     * [force] makes the check afresh instead of reusing one from the last hour.
+     */
+    suspend fun checkLatest(search: SearchBook, force: Boolean = false) = checkLatest(search.origin, search.bookUrl, force) { Book.from(search) }
+
+    /** The same for a book on the shelf, from the source it is on now. */
+    suspend fun checkLatest(row: BookRow, force: Boolean = false) = checkLatest(row.origin, row.bookUrl, force) { row.toBook() }
+
+    private suspend fun checkLatest(origin: String, bookUrl: String, force: Boolean, book: () -> Book): app.openread.engine.LatestCheck.Result? =
+        latestOf(origin + "\u0000" + bookUrl, force) {
+            val web = engine.web(origin) ?: return@latestOf null
+            val b = book()
+            web.bookInfo(b)
+            app.openread.engine.LatestCheck.run(web, b, web.chapters(b))
+        }
 
     /**
      * Checks every source in [others] against [mine], the check of a source whose newest chapters are padding, quietly and a few
@@ -252,7 +269,9 @@ class Library(private val context: Context, private val db: AppDb, private val e
      * distinct newest chapter go first and the rest follow. Only a source whose newest chapter is itself complete counts, and
      * only if it is at least three chapters further than [mine].
      */
-    suspend fun findCompleteSource(mine: app.openread.engine.LatestCheck.Result, others: List<SearchBook>, onProgress: (done: Int, total: Int) -> Unit): OthersChecked = coroutineScope {
+    suspend fun findCompleteSource(
+        mine: app.openread.engine.LatestCheck.Result, others: List<SearchBook>, force: Boolean = false, onProgress: (done: Int, total: Int) -> Unit,
+    ): OthersChecked = coroutineScope {
         val distinct = Freshness.newestFirst(others.distinctBy { it.origin })
         val diverse = distinct.groupBy { it.latestChapterTitle.orEmpty() }.values.flatMap { it.take(2) }.toSet()
         val candidates = distinct.filter { it in diverse } + distinct.filter { it !in diverse }
@@ -262,7 +281,7 @@ class Library(private val context: Context, private val db: AppDb, private val e
         val checked = candidates.map { cand ->
             async {
                 gate.withPermit {
-                    val r = withTimeoutOrNull(90_000) { checkLatest(cand) }
+                    val r = withTimeoutOrNull(90_000) { checkLatest(cand, force) }
                     onProgress(done.incrementAndGet(), candidates.size)
                     cand to r
                 }
@@ -291,18 +310,85 @@ class Library(private val context: Context, private val db: AppDb, private val e
         rows
     }
 
-    /** Refreshes every book's table of contents and flags the ones with new chapters. Returns how many have news. */
-    suspend fun checkUpdates(): Int = coroutineScope {
+    /**
+     * Refreshes every book's table of contents from its current source and flags the ones with new chapters. Reports how many
+     * have news, and which books' current source could not be read at all (down, or too slow).
+     */
+    suspend fun checkUpdates(): UpdateCheck = coroutineScope {
         val gate = Semaphore(4)
-        db.books().snapshot().map { b ->
+        val results = db.books().snapshot().map { b ->
             async(Dispatchers.IO) {
                 gate.withPermit {
-                    runCatching { withTimeoutOrNull(40_000) { reloadToc(b) } }
-                    db.books().get(b.bookUrl)?.hasUpdate == true
+                    val read = runCatching { withTimeoutOrNull(40_000) { reloadToc(b) } }.getOrNull() != null
+                    Triple(b.bookUrl, read, db.books().get(b.bookUrl)?.hasUpdate == true)
                 }
             }
-        }.count { it.await() }
+        }.map { it.await() }
+        UpdateCheck(results.count { it.third }, results.filter { !it.second }.map { it.first }.toSet())
     }
+
+    suspend fun shelfSnapshot(): List<BookRow> = db.books().snapshot()
+
+    /**
+     * The second half of a shelf refresh, once [checkUpdates] has read every current source: for each book, the current
+     * source's newest chapter is checked first, then every source is searched for the book and the ones that could be better
+     * are checked, all quietly and one book at a time. A source that could not be read, or whose newest chapters are padding
+     * with other novels, is checked against all the others; one that is fine only against those that list three or more
+     * chapters beyond it, which are the only ones that could be better. [onOffer] hears each book for which a clearly better
+     * source was found; nothing is switched here. Checks are made afresh, not taken from the one-hour memory.
+     */
+    suspend fun verifyShelf(
+        books: List<BookRow>, unreachable: Set<String>,
+        onProgress: (done: Int, total: Int) -> Unit, onOffer: (ShelfOffer) -> Unit,
+    ) {
+        for ((i, b) in books.withIndex()) {
+            onProgress(i, books.size)
+            // One book that cannot be checked (a source that throws, the database) must not stop the rest.
+            try {
+                verifyBook(b, b.bookUrl in unreachable)?.let(onOffer)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (_: Exception) {
+            }
+        }
+        onProgress(books.size, books.size)
+    }
+
+    private suspend fun verifyBook(b: BookRow, unreachable: Boolean): ShelfOffer? {
+        val row = db.books().get(b.bookUrl) ?: return null // removed, or moved to another source, meanwhile
+        val mine = if (unreachable) null else checkLatest(row, force = true)
+        if (!unreachable && mine == null) return null // the source answers but its chapters cannot be judged: no verdict
+        val others = alternativesFlow(row).lastOrNull().orEmpty().filter { !isDeclined(row, it) }
+        if (others.isEmpty()) return null
+        // A source that could not be read counts for as many chapters as the book had, so only a source at least that long is
+        // offered (a short mirror would lose the reader's place).
+        val baseline = mine ?: app.openread.engine.LatestCheck.Result(row.totalChapters, false, row.chapterTitle.orEmpty(), (row.totalChapters - 3).coerceAtLeast(0))
+        val candidates = if (mine == null || !mine.complete) others else {
+            val mineNumber = app.openread.engine.ChapterNumbers.of(row.latestChapter.orEmpty()) ?: -1
+            if (mineNumber >= 0) others.filter { Freshness.of(it) >= mineNumber + 3 }.take(12)
+            else Freshness.newestFirst(others).take(8)
+        }
+        if (candidates.isEmpty()) return null
+        val better = findCompleteSource(baseline, candidates, force = true) { _, _ -> }.better ?: return null
+        val why = when {
+            mine == null -> "「${row.originName}」现在读不出来（打不开或太慢）。"
+            !mine.complete -> truncatedNote(row.originName, mine)
+            else -> "「${row.originName}」只到「${row.latestChapter.orEmpty()}」，更新较慢。"
+        }
+        return ShelfOffer(row, SwitchOffer(better.source, why + betterLine(better) + "\n\n要切换过去吗？"))
+    }
+
+    /** Offers the reader turned down are not made again for a day (until the app is restarted, at the latest). */
+    private val declined = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
+    private fun declineKey(book: BookRow, target: SearchBook) = book.bookUrl + "\u0000" + target.bookUrl
+
+    fun declineOffer(offer: ShelfOffer) {
+        declined[declineKey(offer.book, offer.offer.target)] = System.currentTimeMillis()
+    }
+
+    private fun isDeclined(book: BookRow, target: SearchBook) =
+        declined[declineKey(book, target)]?.let { System.currentTimeMillis() - it < DECLINE_MS } == true
 
     // ---- chapter text cache --------------------------------------------------------------------------------------
 

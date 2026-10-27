@@ -14,6 +14,7 @@ import app.openread.ui.update.UpdateController
 import app.openread.data.AppUpdate
 import app.openread.data.Engine
 import app.openread.data.Library
+import app.openread.data.NetworkState
 import app.openread.data.Prefs
 import app.openread.data.SourceRepo
 import app.openread.data.SubscriptionUpdater
@@ -35,6 +36,7 @@ class AppContainer(app: Application) {
     val sources = SourceRepo(db.sources())
     val engine = Engine(http, sources, db.health())
     val library = Library(app, db, engine, sources)
+    val network = NetworkState(app)
     val subscription = SubscriptionUpdater(app, prefs, sources, http)
     val appUpdate = AppUpdate(app, prefs, http)
     /** Outlives the activity, so a download keeps going (and the dialog comes back) when the app is left and reopened. */

@@ -67,6 +67,8 @@ import app.openread.engine.Chapter
 import app.openread.engine.Freshness
 import app.openread.engine.SearchBook
 import app.openread.ui.components.BookCover
+import app.openread.ui.components.DataAsk
+import app.openread.ui.components.DataAskDialog
 import app.openread.ui.components.SwitchOfferDialog
 import app.openread.ui.components.factory
 import app.openread.ui.nav.Handoff
@@ -158,6 +160,9 @@ class DetailViewModel(private val c: AppContainer, private val bookUrl: String) 
         _state.update { it.copy(loading = false, switching = false, error = firstError ?: "打开失败") }
     }
 
+    /** Checking every other source is heavy: on mobile data it waits for the reader's yes. */
+    val dataAsk = DataAsk { c.network.unmetered() }
+
     /** The sources the last check looked at, so that moving to one of them can be checked against the rest. */
     private var lastOthers: List<SearchBook> = emptyList()
 
@@ -175,12 +180,18 @@ class DetailViewModel(private val c: AppContainer, private val bookUrl: String) 
             _state.update { it.copy(checkingLatest = true, latestNote = null, latestChecked = 0, latestTotal = 0, offer = null) }
             val mine = withTimeoutOrNull(90_000) { c.library.checkLatest(current) } ?: withTimeoutOrNull(90_000) { c.library.checkLatest(current) }
             if (mine == null || mine.complete) { _state.update { it.copy(checkingLatest = false) }; return@launch }
+            if (others.isNotEmpty() && !dataAsk.allowed()) {
+                if (_state.value.book?.bookUrl == shown) {
+                    _state.update { it.copy(checkingLatest = false, latestNote = truncatedNote(current.originName, mine) + "当前不是 Wi-Fi，没有核对其他书源；连上 Wi-Fi 后重新打开这本书就会核对。") }
+                }
+                return@launch
+            }
             val found = c.library.findCompleteSource(mine, others) { done, total -> _state.update { it.copy(latestChecked = done, latestTotal = total) } }
             // The reader may have switched source or reopened the page while this ran; then the verdict is about something else.
             if (_state.value.book?.bookUrl != shown) { _state.update { it.copy(checkingLatest = false) }; return@launch }
             val better = found.better
             if (better != null) {
-                val why = truncatedNote(current, mine) + betterLine(better)
+                val why = truncatedNote(current.originName, mine) + betterLine(better)
                 _state.update { it.copy(checkingLatest = false, latestNote = "$why 可以点右上角换源。", offer = SwitchOffer(better.source, "$why\n\n要切换过去吗？")) }
             } else {
                 _state.update {
@@ -401,6 +412,7 @@ fun DetailScreen(bookUrl: String, onBack: () -> Unit, onRead: (String, Int?) -> 
     }
 
     s.offer?.let { SwitchOfferDialog(it, onSwitch = vm::acceptOffer, onDismiss = vm::dismissOffer) }
+    DataAskDialog(vm.dataAsk)
 
     s.alternatives?.let { alts ->
         ModalBottomSheet(onDismissRequest = vm::dismissAlternatives) {

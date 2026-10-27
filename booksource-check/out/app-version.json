@@ -1,8 +1,8 @@
 {
-  "versionCode": 14,
-  "versionName": "1.0.13",
-  "notes": "听书：朗读时高亮正在读的句子并自动翻页/滚动，翻到哪页就从哪页读，语速可调到 3 倍（菜单里可直接调）。换源面板边搜边出，不用等全部书源；换源后会检测新书源的最新章，不完整时核对其余所有书源，并问你是否换到更完整的书源。",
-  "url": "https://raw.githubusercontent.com/read0001/read/main/releases/openread-1.0.13.apk",
+  "versionCode": 15,
+  "versionName": "1.0.14",
+  "notes": "书架刷新分两步：先检查当前书源，再在后台核对所有书源和最新章，找到更完整的书源时问你是否切换；不是 Wi-Fi 时先问你是否核对。听书语速可调到 3 倍。",
+  "url": "https://raw.githubusercontent.com/read0001/read/main/releases/openread-1.0.14.apk",
   "size": 3277230,
-  "sha256": "735fad3fc77175e42cbd995eae12c56a7f378335ab9d33447c48474141828fca"
+  "sha256": "099f8a5be36440efd3bc77f4bf6012a0d9c72be551c834442a74ef126b458ca8"
 }
