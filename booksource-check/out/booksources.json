@@ -838,6 +838,61 @@
   {
     "bookSourceComment": "",
     "bookSourceGroup": "校验可用",
+    "bookSourceName": "👔 日居月诸",
+    "bookSourceType": 0,
+    "bookSourceUrl": "https://m.po18yu.com",
+    "customOrder": 448,
+    "enabled": true,
+    "enabledCookieJar": false,
+    "enabledExplore": true,
+    "exploreUrl": "[{\"title\":\"排  行\",\"url\":\"\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":1}},\n{\"title\":\"总推荐榜\",\"url\":\"https://m.po18yu.com/ranks/allvote/{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"总收藏榜\",\"url\":\"https://m.po18yu.com/ranks/goodnum/{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"总点击榜\",\"url\":\"https://m.po18yu.com/ranks/allvisit/{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"月点击榜\",\"url\":\"https://m.po18yu.com/ranks/monthvisit/{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"周点击榜\",\"url\":\"https://m.po18yu.com/ranks/weekvisit/{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"最新入库\",\"url\":\"https://m.po18yu.com/ranks/postdate/{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"最近更新\",\"url\":\"https://m.po18yu.com/ranks/lastupdate/{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"本站推荐\",\"url\":\"https://m.po18yu.com/ranks/toptime/{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"全本小说\",\"url\":\"https://m.po18yu.com/quanben.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"书  库\",\"url\":\"\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":1}},\n{\"title\":\"都 市\",\"url\":\"https://m.po18yu.com/category/1_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"浓 情\",\"url\":\"https://m.po18yu.com/category/2_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"言 情\",\"url\":\"https://m.po18yu.com/category/3_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"校 园\",\"url\":\"https://m.po18yu.com/category/4_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"武 侠\",\"url\":\"https://m.po18yu.com/category/5_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"玄 幻\",\"url\":\"https://m.po18yu.com/category/6_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"穿 越\",\"url\":\"https://m.po18yu.com/category/7_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"惊 悚\",\"url\":\"https://m.po18yu.com/category/8_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"悬 疑\",\"url\":\"https://m.po18yu.com/category/9_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"重 生\",\"url\":\"https://m.po18yu.com/category/10_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"历 史\",\"url\":\"https://m.po18yu.com/category/11_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"其 他\",\"url\":\"https://m.po18yu.com/category/12_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}}]",
+    "lastUpdateTime": 1681058433636,
+    "respondTime": 5548,
+    "ruleBookInfo": {
+      "init": "",
+      "intro": "class.h3_rf creat_time@text&&class.book_desc@html@js:result.replace(/^/,'    ')",
+      "kind": "class.qtxx@tag.p.1@text&&class.state@text##类别：|中",
+      "lastChapter": "class.h3_rf new_time.0@text&&class.h3_rf creat_time@text##更新时间：\n<js>result.replace(/(.*)\\s/,'$1 • ')</js>",
+      "tocUrl": "text.更多章节@href",
+      "wordCount": "class.qtxx@tag.p.2@text##总字数："
+    },
+    "ruleContent": {
+      "content": "id.rd-txt@html",
+      "nextContentUrl": "text.下一页@href",
+      "replaceRegex": "##\\s*>>本章未完.*继续阅读\\s*"
+    },
+    "ruleExplore": {
+      "author": "class.book-author@text",
+      "bookList": "class.book-li",
+      "bookUrl": "a@href",
+      "coverUrl": "@js:'https://m.kanshujun.com/style/noimg.jpg'",
+      "intro": "class.book-intro@html",
+      "kind": "class.sk_b_span@text&&tag.i@text##\\s\\|\\s(连载|全本)",
+      "name": "class.book-title@text##_.*",
+      "wordCount": "class.tag-small blue@text"
+    },
+    "ruleReview": {},
+    "ruleSearch": {
+      "author": "class.book-author@text||class.aut@text",
+      "bookList": "class.book-li||class.book_inf",
+      "bookUrl": "a@href",
+      "coverUrl": "@js:'https://m.kanshujun.com/style/noimg.jpg'",
+      "intro": "",
+      "kind": "class.sk_b_span@text&&tag.i@text##\\s\\|\\s(连载|全本)",
+      "name": "class.book-title@text||h3@text",
+      "wordCount": "class.tag-small blue@text||class.qtxx@tag.p.2@text##总字数："
+    },
+    "ruleToc": {
+      "chapterList": "class.mulu_uld@tag.li",
+      "chapterName": "tag.a@text##>|Po18tV.CoM",
+      "chapterUrl": "tag.a@href"
+    },
+    "searchUrl": "https://m.po18yu.com/modules/article/search.php?searchkey={{key}}&submit=%CC%E1%BD%BB,{\"charset\":\"gbk\"}",
+    "weight": 0
+  },
+  {
+    "bookSourceComment": "",
+    "bookSourceGroup": "校验可用",
     "bookSourceName": "👔 佩蒲斐榕",
     "bookSourceType": 0,
     "bookSourceUrl": "https://m.popofree.com",
@@ -934,64 +989,6 @@
       "chapterUrl": "a@href"
     },
     "searchUrl": "https://m.po18wx.com/s.php,{\n\"method\": \"POST\",\n\"body\": \"s={{key}}&type=articlename\"\n}",
-    "weight": 0
-  },
-  {
-    "bookSourceComment": "https://m.txtyzw.com",
-    "bookSourceGroup": "校验可用",
-    "bookSourceName": "🪐荏染柔木",
-    "bookSourceType": 0,
-    "bookSourceUrl": "https://m.po18.xyz/",
-    "bookUrlPattern": "",
-    "customOrder": 471,
-    "enabled": true,
-    "enabledCookieJar": false,
-    "enabledExplore": true,
-    "exploreUrl": "[{\"title\":\"分类\",\"url\":\"\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":1}},\n{\"title\":\"都市\",\"url\":\"/wapsort/1_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"浓情\",\"url\":\"/wapsort/2_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"言情\",\"url\":\"/wapsort/3_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"校园\",\"url\":\"/wapsort/4_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"武侠\",\"url\":\"/wapsort/5_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"玄幻\",\"url\":\"/wapsort/6_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"穿越\",\"url\":\"/wapsort/7_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"惊悚\",\"url\":\"/wapsort/8_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"悬疑\",\"url\":\"/wapsort/9_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"重生\",\"url\":\"/wapsort/10_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"历史\",\"url\":\"/wapsort/11_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"网游\",\"url\":\"/wapsort/12_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"科幻\",\"url\":\"/wapsort/13_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"耽美\",\"url\":\"/wapsort/14_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"高干\",\"url\":\"/wapsort/15_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"种田\",\"url\":\"/wapsort/16_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"百合\",\"url\":\"/wapsort/17_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"其他\",\"url\":\"/wapsort/18_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"——\",\"url\":\"\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"——\",\"url\":\"\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"标签\",\"url\":\"\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":1}},\n{\"title\":\"快穿\",\"url\":\"/tag/kc/p_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"美攻\",\"url\":\"/tag/mg/p_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"肉文\",\"url\":\"/tag/rw/p_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"年下\",\"url\":\"/tag/nx/p_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"年上\",\"url\":\"/tag/ns/p_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"网游\",\"url\":\"/tag/wy/p_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"人兽\",\"url\":\"/tag/rs/p_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"强强\",\"url\":\"/tag/qq/p_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"穿越\",\"url\":\"/tag/cy/p_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"双性\",\"url\":\"/tag/sx/p_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"强受\",\"url\":\"/tag/qs/p_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"疗愈\",\"url\":\"/tag/ly/p_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"重生\",\"url\":\"/tag/cs/p_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"百合\",\"url\":\"/tag/bh/p_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"虐文\",\"url\":\"/tag/nw/p_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"温馨\",\"url\":\"/tag/wx/p_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"ＮＰ\",\"url\":\"/tag/np/p_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"萌文\",\"url\":\"/tag/mw/p_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"耽美\",\"url\":\"/tag/dm/p_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"末世\",\"url\":\"/tag/ms/p_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"校园\",\"url\":\"/tag/xy/p_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"师生\",\"url\":\"/tag/ss/p_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"ＢＧ\",\"url\":\"/tag/bg/p_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"高干\",\"url\":\"/tag/gg/p_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"反攻\",\"url\":\"/tag/fg/p_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"诱受\",\"url\":\"/tag/ys/p_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"不限\",\"url\":\"/tag/bx/p_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"ＳＭ\",\"url\":\"/tag/sm/p_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"女性向\",\"url\":\"/tag/nv/p_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"男性向\",\"url\":\"/tag/nan/p_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"娱乐圈\",\"url\":\"/tag/ylq/p_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}},\n{\"title\":\"金手指\",\"url\":\"/tag/jsz/p_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.2}}]",
-    "lastUpdateTime": 1651221307814,
-    "loginUrl": "",
-    "respondTime": 6862,
-    "ruleBookInfo": {
-      "author": "//*[@id=\"novelMain\"]/div[1]/table/tbody/tr/td[1]/div[1]/h2/text()",
-      "init": "",
-      "intro": "//*[@id=\"novelMain\"]/div[3]/div/pre/text()@js:result.replace(/^/,'    ')",
-      "kind": "class.article_info_td@tag.a.0@text&&class.article_info_td@tag.time@text",
-      "lastChapter": "class.article_info_td@tag.a.1@text&&class.article_info_td@tag.time@text\n<js>result.replace(/(.*)\\s/,'$1 • ')</js>",
-      "name": "//*[@id=\"nr_body\"]/nav/ul/li[2]/text()##\\_.*",
-      "tocUrl": "//*[@style=\"color:red;\"]/@href",
-      "wordCount": "##总字数：([^<]+)<##$1###@js:result+'字'"
-    },
-    "ruleContent": {
-      "content": "id.nr1@html",
-      "imageStyle": "0",
-      "nextContentUrl": "//*[@id=\"pt_next\"]/@href"
-    },
-    "ruleExplore": {
-      "author": "tag.strong@text||class.list_author@tag.span@text",
-      "bookList": "class.common-bookele||id.list_ul@tag.li",
-      "bookUrl": "tag.a.1@href||h3@tag.a.0@href",
-      "coverUrl": "@js:'https://m.kanshujun.com/style/noimg.jpg'",
-      "intro": "class.abstract@tag.a@textNodes",
-      "kind": "tag.li@tag.a.0@text",
-      "name": "h3@tag.a.0@text||tag.a.1@text##_PO18",
-      "wordCount": "class.lastupdate@tag.time@text"
-    },
-    "ruleSearch": {
-      "author": "tag.strong@text",
-      "bookList": "class.common-bookele",
-      "bookUrl": "tag.a.0@href",
-      "checkKeyWord": "快穿",
-      "coverUrl": "@js:'https://m.kanshujun.com/style/noimg.jpg'",
-      "kind": "tag.p.1@text##栏目.",
-      "name": "tag.a.0@text"
-    },
-    "ruleToc": {
-      "chapterList": "tag.div.0@tag.ul@tag.li!-1@a",
-      "chapterName": "text",
-      "chapterUrl": "href",
-      "nextTocUrl": "//*[@style=\"color:red;\"]/@href"
-    },
-    "searchUrl": "/s.php,{\n  \"method\": \"POST\",\n  \"body\": \"type=articlename&s={{key}}\"\n}",
     "weight": 0
   },
   {
@@ -1962,68 +1959,6 @@
   {
     "bookSourceComment": "",
     "bookSourceGroup": "校验可用",
-    "bookSourceName": "⚡得间小说3",
-    "bookSourceType": 0,
-    "bookSourceUrl": "https://www.idejian.com/",
-    "customOrder": 891,
-    "enabled": true,
-    "enabledCookieJar": false,
-    "enabledExplore": true,
-    "exploreUrl": "                            男生榜单                            ::\n热度榜单::/bangdan/35549?page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n人气榜单::/bangdan/35554?page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n潜力榜单::/bangdan/35555?page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n人气热读::/bangdan/36001?page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n男生点击::/bangdan/36002?page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n男生收藏::/bangdan/36003?page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n新书潜力::/bangdan/36004?page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n爆款热推::/bangdan/36005?page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n男生精品::/bangdan/36006?page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n男生完本::/bangdan/36007?page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n本周强推::/bangdan/36008?page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n大神推荐::/bangdan/36009?page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n                            男生连载                            ::\n奇幻::/books/nansheng?filterInfo=%7B%222%22%3A%22N%22%7D&categoryId=1114&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n玄幻::/books/nansheng?filterInfo=%7B%222%22%3A%22N%22%7D&categoryId=1115&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n武侠::/books/nansheng?filterInfo=%7B%222%22%3A%22N%22%7D&categoryId=1116&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n仙侠::/books/nansheng?filterInfo=%7B%222%22%3A%22N%22%7D&categoryId=1117&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n都市::/books/nansheng?filterInfo=%7B%222%22%3A%22N%22%7D&categoryId=1118&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n校园::/books/nansheng?filterInfo=%7B%222%22%3A%22N%22%7D&categoryId=1119&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n历史::/books/nansheng?filterInfo=%7B%222%22%3A%22N%22%7D&categoryId=1120&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n军事::/books/nansheng?filterInfo=%7B%222%22%3A%22N%22%7D&categoryId=1121&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n游戏::/books/nansheng?filterInfo=%7B%222%22%3A%22N%22%7D&categoryId=1122&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n竞技::/books/nansheng?filterInfo=%7B%222%22%3A%22N%22%7D&categoryId=1123&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n科幻::/books/nansheng?filterInfo=%7B%222%22%3A%22N%22%7D&categoryId=1124&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n灵异::/books/nansheng?filterInfo=%7B%222%22%3A%22N%22%7D&categoryId=1125&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n                            男生完结                            ::\n奇幻::/books/nansheng?filterInfo=%7B%222%22%3A%22Y%22%7D&categoryId=1114&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n玄幻::/books/nansheng?filterInfo=%7B%222%22%3A%22Y%22%7D&categoryId=1115&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n武侠::/books/nansheng?filterInfo=%7B%222%22%3A%22Y%22%7D&categoryId=1116&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n仙侠::/books/nansheng?filterInfo=%7B%222%22%3A%22Y%22%7D&categoryId=1117&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n都市::/books/nansheng?filterInfo=%7B%222%22%3A%22Y%22%7D&categoryId=1118&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n校园::/books/nansheng?filterInfo=%7B%222%22%3A%22Y%22%7D&categoryId=1119&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n历史::/books/nansheng?filterInfo=%7B%222%22%3A%22Y%22%7D&categoryId=1120&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n军事::/books/nansheng?filterInfo=%7B%222%22%3A%22Y%22%7D&categoryId=1121&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n游戏::/books/nansheng?filterInfo=%7B%222%22%3A%22Y%22%7D&categoryId=1122&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n竞技::/books/nansheng?filterInfo=%7B%222%22%3A%22Y%22%7D&categoryId=1123&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n科幻::/books/nansheng?filterInfo=%7B%222%22%3A%22Y%22%7D&categoryId=1124&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n灵异::/books/nansheng?filterInfo=%7B%222%22%3A%22Y%22%7D&categoryId=1125&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n                            女生榜单                            ::\n热度榜单::/bangdan/35558?page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n人气榜单::/bangdan/35556?page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n潜力榜单::/bangdan/35557?page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n人气热读::/bangdan/36014?page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n女生点击::/bangdan/36015?page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n女生收藏::/bangdan/36016?page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n新书潜力::/bangdan/36017?page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n灵异完本::/bangdan/36018?page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n现言完结::/bangdan/36019?page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n女生完本::/bangdan/36021?page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n本周强推::/bangdan/36022?page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n大神推荐::/bangdan/36023?page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n                            女生连载                            ::\n现代言情::/books/nvsheng?categoryId=1126&filterInfo=%7B%222%22%3A%22N%22%7D&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n古代言情::/books/nvsheng?categoryId=1127&filterInfo=%7B%222%22%3A%22N%22%7D&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n幻想言情::/books/nvsheng?categoryId=1128&filterInfo=%7B%222%22%3A%22N%22%7D&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n青春校园::/books/nvsheng?categoryId=1129&filterInfo=%7B%222%22%3A%22N%22%7D&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n同人作品::/books/nvsheng?categoryId=1130&filterInfo=%7B%222%22%3A%22N%22%7D&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n惊悚恐怖::/books/nvsheng?categoryId=1132&filterInfo=%7B%222%22%3A%22N%22%7D&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n次元专区::/books/nvsheng?categoryId=1133&filterInfo=%7B%222%22%3A%22N%22%7D&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n                            女生完结                            ::\n现代言情::/books/nvsheng?categoryId=1126&filterInfo=%7B%222%22%3A%22Y%22%7D&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n古代言情::/books/nvsheng?categoryId=1127&filterInfo=%7B%222%22%3A%22Y%22%7D&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n幻想言情::/books/nvsheng?categoryId=1128&filterInfo=%7B%222%22%3A%22Y%22%7D&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n青春校园::/books/nvsheng?categoryId=1129&filterInfo=%7B%222%22%3A%22Y%22%7D&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n同人作品::/books/nvsheng?categoryId=1130&filterInfo=%7B%222%22%3A%22Y%22%7D&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n惊悚恐怖::/books/nvsheng?categoryId=1132&filterInfo=%7B%222%22%3A%22Y%22%7D&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n次元专区::/books/nvsheng?categoryId=1133&filterInfo=%7B%222%22%3A%22Y%22%7D&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n                            出版榜单                            ::\n热度榜单::/bangdan/35899?page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n人气榜单::/bangdan/35561?page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n潜力榜单::/bangdan/35562?page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n                            出版连载                            ::/books/chuban?filterInfo=%7B%222%22%3A%22N%22%7D&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n人文社科::/books/chuban?categoryId=1134&filterInfo=%7B%222%22%3A%22N%22%7D&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n经管励志::/books/chuban?categoryId=1135&filterInfo=%7B%222%22%3A%22N%22%7D&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n生活::/books/chuban?categoryId=1136&filterInfo=%7B%222%22%3A%22N%22%7D&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n教育::/books/chuban?categoryId=1137&filterInfo=%7B%222%22%3A%22N%22%7D&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n文学艺术::/books/chuban?categoryId=1138&filterInfo=%7B%222%22%3A%22N%22%7D&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n                            出版完结                            ::/books/chuban?filterInfo=%7B%222%22%3A%22Y%22%7D&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n人文社科::/books/chuban?categoryId=1134&filterInfo=%7B%222%22%3A%22Y%22%7D&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n经管励志::/books/chuban?categoryId=1135&filterInfo=%7B%222%22%3A%22Y%22%7D&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n生活::/books/chuban?categoryId=1136&filterInfo=%7B%222%22%3A%22Y%22%7D&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n教育::/books/chuban?categoryId=1137&filterInfo=%7B%222%22%3A%22Y%22%7D&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}\n文学艺术::/books/chuban?categoryId=1138&filterInfo=%7B%222%22%3A%22Y%22%7D&page={{page}},{\"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"}",
-    "header": "{\n  \"User-Agent\": \"Mozilla/5.0 (Linux; Android 10; M2007J22C Build/QP1A.190711.020; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/83.0.4103.101 Mobile Safari/537.36\"\n}",
-    "lastUpdateTime": 1678705239472,
-    "loginUrl": "",
-    "respondTime": 4171,
-    "ruleBookInfo": {
-      "author": ".bk_author span.0@text",
-      "canReName": "",
-      "coverUrl": ".side img@src",
-      "intro": ".brief_intro p@html##内容简介.",
-      "kind": ".bk_author span.1@text&&.icon_tag@text",
-      "lastChapter": ".read_progress span.2@textNodes",
-      "name": ".main dt@text",
-      "tocUrl": "@js:\"https://dj.palmestore.com/zybook/u/p/api.php?Act=getChapterListVersion&bid=\" +java.put('bid',baseUrl.match(/(\\d+)/)[1])+\"&p4=501656\"",
-      "wordCount": ".font_num@text"
-    },
-    "ruleContent": {
-      "content": ".h5_mainbody@p@html",
-      "imageStyle": "",
-      "replaceRegex": ""
-    },
-    "ruleExplore": {
-      "author": "",
-      "bookList": "",
-      "bookUrl": "",
-      "coverUrl": "",
-      "intro": "",
-      "kind": "",
-      "lastChapter": "",
-      "name": "",
-      "wordCount": ""
-    },
-    "ruleSearch": {
-      "author": ".author@text||.bkitem_author@text",
-      "bookList": ".rank_ullist li||.v_books li",
-      "bookUrl": "a.1@href##^##https://m.idejian.com",
-      "checkKeyWord": "",
-      "coverUrl": "img@src",
-      "intro": ".rank_bkbrief@text||.bkitem_brief@text",
-      "kind": ".rank_bkinfo span!0@text&&.rank_bktime@text&&.bkitem_types@text##\\s.*",
-      "lastChapter": "a.2@text##.*章节.",
-      "name": "a.1@text",
-      "wordCount": ".search_ohter span.1@text||.bk_fontnum@text"
-    },
-    "ruleToc": {
-      "chapterList": "cls@cp",
-      "chapterName": "cn@text##版权信息",
-      "chapterUrl": "@CSS:id@text\n@js:\nbid=java.get('bid');\n'https://m.idejian.com/book/'+bid+'/'+result+'.html'"
-    },
-    "searchUrl": "/search?keyword={{key}}&page={{page}},{\n\t  \"headers\": \"{\\\"User-Agent\\\": \\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36\\\"}\"\n}",
-    "weight": 0
-  },
-  {
-    "bookSourceComment": "",
-    "bookSourceGroup": "校验可用",
     "bookSourceName": "笔趣阁㉒",
     "bookSourceType": 0,
     "bookSourceUrl": "http://www.xinbqg.com/",
@@ -2949,6 +2884,59 @@
     "weight": 0
   },
   {
+    "bookSourceComment": "2026-09-07 搜索实测可用\nby狼崽儿 //2026.7.30\n主要是优质出版小说，兼部分网络小说。\n如果没有出正文，就再刷新一次。该网站有时连接速度很慢，甚至连接不上，都是正常情况，过段时间再连就行了。",
+    "bookSourceGroup": "常规站·搜索可用",
+    "bookSourceName": "品书斋🌟",
+    "bookSourceType": 0,
+    "bookSourceUrl": "https://www.pinshuzhai.com ",
+    "concurrentRate": "",
+    "customOrder": 14,
+    "enabled": true,
+    "enabledCookieJar": true,
+    "enabledExplore": true,
+    "exploreUrl": "书香文库::/bookcat/shuxiangwenku/page/{{page}}\n中国文学::/bookcat/zhongguowenxue/page/{{page}}\n世界文学::/bookcat/shijiewenxue/page/{{page}}\n经典名著::/bookcat/jingdianmingzhu/page/{{page}}\n悬疑推理::/bookcat/xuanyituili-2/page/{{page}}\n散文集::/bookcat/sanwenji/page/{{page}}\n传记::/bookcat/zhuanji/page/{{page}}\n以下是网络小说分类 \n网络小说总类::/bookcat/wangluoxiaoshuo/page/{{page}}                          \n玄幻奇幻::/bookcat/xuanhuanqihuan/page/{{page}}\n武侠仙侠::/bookcat/wuxiaxianxia/page/{{page}}\n恋爱言情::/bookcat/lianaiyanqing/page/{{page}}\n都市生活::/bookcat/dushishenghuo/page/{{page}}\n悬疑推理::/bookcat/xuanyituili/page/{{page}}\n恐怖灵异::/bookcat/kongbulingyi/page/{{page}}\n科学幻想::/bookcat/kehuan/page/{{page}}\n历史军事::/bookcat/lishijunshi/page/{{page}}\n穿越重生::/bookcat/chuanyuechongsheng/page/{{page}}",
+    "header": "{  \"User-Agent\": \"Mozilla/5.0 (Linux; Android 8.1.0; JKM-AL00b Build/HUAWEIJKM-AL00b; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/66.0.3359.126 MQQBrowser/6.2 TBS/044807 Mobile Safari/537.36\"}",
+    "lastUpdateTime": 1785388614165,
+    "respondTime": 180000,
+    "ruleBookInfo": {
+      "author": "@XPath://meta[@property='og:novel:author']/@content",
+      "coverUrl": "@XPath://meta[@property='og:image']/@content@js:encodeURI(result) + ',{\"headers\":{\"Referer\":\"https://www.pinshuzhai.com\"}}'",
+      "intro": ".docspt@text##作品简介：",
+      "kind": ".catb a@text&&",
+      "name": "@XPath://meta[@property='og:novel:book_name']/@content",
+      "wordCount": ".nif span@text"
+    },
+    "ruleContent": {
+      "content": "#chapter@html@js:\nvar html = result;\nvar t = html.indexOf('class=\\\"tjlm\\\"');\nif (t > -1) {\n  var d = html.indexOf('</div>', t);\n  if (d > -1) html = html.substring(0, t - 6) + html.substring(d + 6);\n}\nvar box = html.indexOf('readcons');\nif (box === -1) box = html.indexOf('readconss');\nif (box === -1) box = html.indexOf('duboxs');\nif (box === -1) box = html.indexOf('chapterbo');\nif (box === -1) box = html.indexOf('reakuang');\nif (box > -1) {\n  var bs = html.indexOf('>', box) + 1;\n  var be = html.indexOf('</div>', bs);\n  if (be > -1) html = html.substring(bs, be);\n}\n// 跳过来源行（支持 shidp / shid / hid 三种）\nvar srcEnd = -1;\nvar si = html.indexOf('shidp');\nif (si > -1 && si < 100) {\n  var pe = html.indexOf('</p>', si);\n  if (pe > -1) srcEnd = pe + 4;\n}\nif (srcEnd === -1) {\n  si = html.indexOf('shid');\n  if (si === -1) si = html.indexOf('hid');\n  if (si > -1 && si < 100) {\n    var ae = html.indexOf('</article>', si);\n    if (ae > -1) srcEnd = ae + 10;\n  }\n}\nif (srcEnd > -1) html = html.substring(srcEnd);\nhtml = html.split('</p>').join('\\\n');\nhtml = html.split('<br/>').join('\\\n');\nhtml = html.split('<br>').join('\\\n');\nvar out = '';\nvar inTag = false;\nfor (var ci = 0; ci < html.length; ci++) {\n  var ch = html.charAt(ci);\n  if (ch === '<') { inTag = true; continue; }\n  if (ch === '>') { inTag = false; continue; }\n  if (!inTag) out += ch;\n}\nvar lines = out.split('\\\n');\nvar clean = [];\nfor (var li = 0; li < lines.length; li++) {\n  var l = lines[li];\n  var trimmed = l.replace(/\\\\u3000/g, '').replace(/ /g, '');\n  if (trimmed && trimmed !== '→') clean.push(l);\n}\nresult = clean.join('\\\n');",
+      "replaceRegex": ""
+    },
+    "ruleExplore": {
+      "author": ".bookinfo .author a@text",
+      "bookList": ".catdanlist ul li",
+      "bookUrl": ".bookinfo h4 a@href",
+      "coverUrl": "div:first-child a img@src@js:encodeURI(result) + ',{\"headers\":{\"Referer\":\"https://www.pinshuzhai.com\"}}'",
+      "intro": ".bookinfo p:last-of-type@text",
+      "kind": ".bookinfo .cats@text",
+      "name": ".bookinfo h4 a@text"
+    },
+    "ruleSearch": {
+      "author": ".bookinfo .author a@text",
+      "bookList": ".catdanlist ul li",
+      "bookUrl": ".bookinfo h4 a@href",
+      "coverUrl": "div:first-child a img@src@js:encodeURI(result) + ',{\"headers\":{\"Referer\":\"https://www.pinshuzhai.com\"}}'",
+      "intro": ".bookinfo p:last-of-type@text",
+      "kind": ".bookinfo .cats@text",
+      "name": ".bookinfo h4 a@text"
+    },
+    "ruleToc": {
+      "chapterList": ".newzxzj .zjlist a",
+      "chapterName": "@text",
+      "chapterUrl": "@href"
+    },
+    "searchUrl": "page/{{page}}?s={{key}}",
+    "weight": 0
+  },
+  {
     "bookSourceGroup": "常规站·搜索可用",
     "bookSourceName": "错层小说网",
     "bookSourceType": 0,
@@ -3264,53 +3252,6 @@
       "chapterUrl": "href"
     },
     "searchUrl": "{{cookie.removeCookie(source.key)}}/s.php,{\"method\": \"post\",\"body\":\"s={{key}}&type=articlename&submit=\"}",
-    "weight": 0
-  },
-  {
-    "bookSourceGroup": "源论坛",
-    "bookSourceName": "看书网",
-    "bookSourceType": 0,
-    "bookSourceUrl": "https://www.kanshuw.com",
-    "customButton": false,
-    "customOrder": 10,
-    "enabled": true,
-    "enabledCookieJar": true,
-    "enabledExplore": true,
-    "eventListener": false,
-    "lastUpdateTime": 1733932666780,
-    "respondTime": 3634,
-    "ruleBookInfo": {
-      "author": "class.row book_info@a[0]@text",
-      "coverUrl": "class.row book_info@img@src",
-      "init": "",
-      "intro": "class.row book_info@id.intro_pc@oweText",
-      "kind": "class.title@a[1]@text",
-      "lastChapter": "class.row book_info@a[2]@text",
-      "name": "class.row book_info@h1@text##免费阅读.*",
-      "tocUrl": ""
-    },
-    "ruleContent": {
-      "content": ".font_max@html##第\\(\\d+/\\d+\\)页",
-      "nextContentUrl": "text.下一章@href",
-      "replaceRegex": "##[a-zA-Z0-9-]+[a-zA-Z0-9-].*\\.[a-zA-Z0-9-].*"
-    },
-    "ruleSearch": {
-      "author": "span@text",
-      "bookList": ".row@dl",
-      "bookUrl": "a[0]@href",
-      "checkKeyWord": "我的",
-      "coverUrl": "tag.dt@tag.a@img@src",
-      "kind": "h3@text##\\[|\\].*",
-      "lastChapter": "a[-1]@text",
-      "name": "h3@text##\\[|.*\\]|免费阅读.*"
-    },
-    "ruleToc": {
-      "chapterList": ".row[-1]@a",
-      "chapterName": "text",
-      "chapterUrl": "href",
-      "nextTocUrl": "class.pages@tag.ul@tag.li.!0:1:-1@tag.a@href"
-    },
-    "searchUrl": "/search.php?q={{key}}",
     "weight": 0
   },
   {
@@ -4117,6 +4058,56 @@
     "weight": 0
   },
   {
+    "bookSourceComment": "by天天的鸟蛋蛋",
+    "bookSourceGroup": "源仓库,小说 书源",
+    "bookSourceName": "爱搬文屋",
+    "bookSourceType": 0,
+    "bookSourceUrl": "https://www.banwenwu.com",
+    "bookUrlPattern": "https://www.banwenwu.com/\\d+/",
+    "customButton": false,
+    "customOrder": 190,
+    "enabled": true,
+    "enabledCookieJar": true,
+    "enabledExplore": true,
+    "eventListener": false,
+    "exploreUrl": "排行::/paihangbang/\n收藏::/collect/\n完本::/wanbenxiaoshuo/",
+    "lastUpdateTime": 1734979437882,
+    "respondTime": 49877,
+    "ruleBookInfo": {
+      "author": "[property$=author]@content",
+      "coverUrl": "[property$=image]@content",
+      "intro": "[property$=description]@content",
+      "kind": "[property~=category|status|update_time]@content",
+      "lastChapter": "[property$=latest_chapter_name]@content",
+      "name": "[property$=book_name]@content"
+    },
+    "ruleContent": {
+      "content": "#content@html"
+    },
+    "ruleExplore": {
+      "bookList": ".layout:nth-child(n+1) .txt-list:nth-child(1) > li:nth-child(n+1)",
+      "bookUrl": "a@href",
+      "kind": ".s5@text",
+      "name": "a@text"
+    },
+    "ruleSearch": {
+      "author": "span.-2@text",
+      "bookList": ".txt-list@li!0",
+      "bookUrl": "span.1@a@href",
+      "checkKeyWord": "剑来",
+      "kind": "span.0:-1@text##\\[|\\]",
+      "lastChapter": "span.2@text",
+      "name": "span.1@text"
+    },
+    "ruleToc": {
+      "chapterList": "#section-list > li:nth-child(n+1) > a",
+      "chapterName": "text",
+      "chapterUrl": "href"
+    },
+    "searchUrl": "{{url=source.getKey();cookie.removeCookie(url)}}\n/modules/article/search.php,{\n  \"body\": \"searchkey={{key}}\",\n  \"charset\": \"GBK\",\n  \"method\": \"POST\"\n}",
+    "weight": 0
+  },
+  {
     "bookSourceComment": "",
     "bookSourceGroup": "源仓库,小说 书源",
     "bookSourceName": "无奈书库",
@@ -4669,56 +4660,6 @@
       "chapterUrl": "href"
     },
     "searchUrl": "/plus/search.php?q={{key}}",
-    "weight": 0
-  },
-  {
-    "bookSourceComment": "",
-    "bookSourceGroup": "源仓库,小说 书源",
-    "bookSourceName": "爱搬文屋",
-    "bookSourceType": 0,
-    "bookSourceUrl": "https://www.banwenwu.com#",
-    "bookUrlPattern": "https://www.banwenwu.com/\\d+/",
-    "customButton": false,
-    "customOrder": 368,
-    "enabled": true,
-    "enabledCookieJar": true,
-    "enabledExplore": true,
-    "eventListener": false,
-    "exploreUrl": "排行::/paihangbang/\n收藏::/collect/\n完本::/wanbenxiaoshuo/",
-    "lastUpdateTime": 1734989704883,
-    "respondTime": 32668,
-    "ruleBookInfo": {
-      "author": "[property$=author]@content",
-      "coverUrl": "[property$=image]@content",
-      "intro": "[property$=description]@content",
-      "kind": "[property~=category|status|update_time]@content",
-      "lastChapter": "[property$=latest_chapter_name]@content",
-      "name": "[property$=book_name]@content"
-    },
-    "ruleContent": {
-      "content": "#content@html"
-    },
-    "ruleExplore": {
-      "bookList": ".layout:nth-child(n+1) .txt-list:nth-child(1) > li:nth-child(n+1)",
-      "bookUrl": "a@href",
-      "kind": ".s5@text",
-      "name": "a@text"
-    },
-    "ruleSearch": {
-      "author": "span.-2@text",
-      "bookList": ".txt-list@li!0",
-      "bookUrl": "span.1@a@href",
-      "checkKeyWord": "剑来",
-      "kind": "span.0:-1@text##\\[|\\]",
-      "lastChapter": "span.2@text",
-      "name": "span.1@text"
-    },
-    "ruleToc": {
-      "chapterList": "#section-list > li:nth-child(n+1) > a",
-      "chapterName": "text",
-      "chapterUrl": "href"
-    },
-    "searchUrl": "{{url=source.getKey();cookie.removeCookie(url)}}\n/modules/article/search.php,{\n  \"body\": \"searchkey={{key}}\",\n  \"charset\": \"GBK\",\n  \"method\": \"POST\"\n}",
     "weight": 0
   },
   {
