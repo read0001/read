@@ -69,7 +69,10 @@ import app.openread.engine.SearchBook
 import app.openread.ui.components.BookCover
 import app.openread.ui.components.DataAsk
 import app.openread.ui.components.DataAskDialog
+import app.openread.ui.components.PinSourceRow
+import app.openread.ui.components.SourceNameFilter
 import app.openread.ui.components.SwitchOfferDialog
+import app.openread.ui.components.filterByName
 import app.openread.ui.components.factory
 import app.openread.ui.nav.Handoff
 import kotlinx.coroutines.Job
@@ -104,6 +107,8 @@ data class DetailState(
     val latestTotal: Int = 0,
     /** Set when the check found a clearly better source: the reader is asked whether to move there. */
     val offer: SwitchOffer? = null,
+    /** 书架里这本书是否固定了书源（不在书架里的书恒为 false）。 */
+    val sourcePinned: Boolean = false,
 )
 
 class DetailViewModel(private val c: AppContainer, private val bookUrl: String) : ViewModel() {
@@ -122,7 +127,7 @@ class DetailViewModel(private val c: AppContainer, private val bookUrl: String) 
             val row = c.library.book(bookUrl)
             if (row != null) {
                 val ch = c.library.chapters(bookUrl).map { it.toChapter() }
-                _state.value = DetailState(loading = false, book = row.toBook(), chapters = ch, inShelf = true, readIndex = row.chapterIndex)
+                _state.value = DetailState(loading = false, book = row.toBook(), chapters = ch, inShelf = true, readIndex = row.chapterIndex, sourcePinned = row.sourcePinned)
                 return@launch
             }
             val hit = Handoff.search?.takeIf { it.bookUrl == bookUrl }
@@ -247,6 +252,21 @@ class DetailViewModel(private val c: AppContainer, private val bookUrl: String) 
         }
     }
 
+    /** 固定（或取消固定）这本书的书源；只对已在书架里的书有效。以点击那一刻的状态为准。 */
+    fun togglePin() {
+        val shown = _state.value.book?.bookUrl ?: return
+        if (!_state.value.inShelf) return
+        viewModelScope.launch {
+            val row = c.library.book(shown) ?: return@launch
+            val pin = !row.sourcePinned
+            c.library.setSourcePinned(shown, pin)
+            if (_state.value.book?.bookUrl != shown) return@launch
+            // 刚固定：正在进行的核对停掉，已经出现的推荐撤掉
+            if (pin) verifyJob?.cancel()
+            _state.update { it.copy(sourcePinned = pin, checkingLatest = if (pin) false else it.checkingLatest, offer = if (pin) null else it.offer, latestNote = if (pin) null else it.latestNote) }
+        }
+    }
+
     fun dismissAlternatives() {
         findJob?.cancel()
         _state.update { it.copy(alternatives = null, finding = false) }
@@ -273,8 +293,9 @@ class DetailViewModel(private val c: AppContainer, private val bookUrl: String) 
                 runCatching { c.library.switchTo(row, target) }
                     .onSuccess { fresh ->
                         val ch = c.library.chapters(fresh.bookUrl).map { it.toChapter() }
-                        _state.update { it.copy(book = fresh.toBook(), chapters = ch, switching = false, readIndex = fresh.chapterIndex, message = "已换到 ${target.originName}") }
-                        if (check != null) verifyLatest(target, check)
+                        _state.update { it.copy(book = fresh.toBook(), chapters = ch, switching = false, readIndex = fresh.chapterIndex, sourcePinned = fresh.sourcePinned, message = "已换到 ${target.originName}") }
+                        // 固定了书源的书，换源后不再核对最新章、不再推荐别的书源。
+                        if (check != null && !fresh.sourcePinned) verifyLatest(target, check)
                     }
                     .onFailure { e -> _state.update { it.copy(switching = false, message = "换源失败：${e.message}") } }
             } else {
@@ -417,6 +438,14 @@ fun DetailScreen(bookUrl: String, onBack: () -> Unit, onRead: (String, Int?) -> 
     s.alternatives?.let { alts ->
         ModalBottomSheet(onDismissRequest = vm::dismissAlternatives) {
             Text("换源", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+            if (s.inShelf) PinSourceRow(s.sourcePinned, vm::togglePin)
+            var query by remember { mutableStateOf("") }
+            if (alts.isNotEmpty()) SourceNameFilter(query) { query = it }
+            val shown = alts.filterByName(query)
+            if (alts.isNotEmpty() && shown.isEmpty()) Text(
+                if (s.finding) "已找到的书源里没有名称包含「${query.trim()}」的，还在继续搜索…" else "没有名称包含「${query.trim()}」的书源",
+                Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             if (s.finding) {
                 Row(Modifier.fillMaxWidth().padding(if (alts.isEmpty()) 24.dp else 8.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                     CircularProgressIndicator(Modifier.size(if (alts.isEmpty()) 40.dp else 18.dp), strokeWidth = if (alts.isEmpty()) 4.dp else 2.dp)
@@ -425,7 +454,7 @@ fun DetailScreen(bookUrl: String, onBack: () -> Unit, onRead: (String, Int?) -> 
             }
             else if (alts.isEmpty()) Text("其他书源里没有找到这本书", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
             LazyColumn {
-                items(alts, key = { it.origin }) { a ->
+                items(shown, key = { it.origin }) { a ->
                     ListItem(
                         headlineContent = { Text(a.originName) },
                         supportingContent = { Text(a.latestChapterTitle?.let { "最新：$it" } ?: a.bookUrl, maxLines = 1, overflow = TextOverflow.Ellipsis) },

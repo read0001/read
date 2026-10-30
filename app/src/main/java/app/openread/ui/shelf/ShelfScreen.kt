@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -130,6 +131,7 @@ class ShelfViewModel(private val c: AppContainer) : ViewModel() {
             val row = c.library.book(o.book.bookUrl)
             _message.value = when {
                 row == null -> "《${o.book.name}》已经不在书架上了"
+                row.sourcePinned -> "《${o.book.name}》已固定书源，没有切换"
                 row.origin != o.book.origin -> "《${o.book.name}》已经换过书源了，请重新刷新核对"
                 else -> try {
                     c.library.switchTo(row, o.offer.target)
@@ -140,6 +142,18 @@ class ShelfViewModel(private val c: AppContainer) : ViewModel() {
                     "换源失败：${e.message}"
                 }
             }
+        }
+    }
+
+    /** 固定（或取消固定）一本书的书源：固定后刷新核对、自动换源、换源推荐都不再动它。 */
+    fun togglePin(b: BookRow) {
+        viewModelScope.launch {
+            val row = c.library.book(b.bookUrl) ?: return@launch // 以库里的当前状态为准，不用列表项上可能已过期的值
+            val pin = !row.sourcePinned
+            c.library.setSourcePinned(b.bookUrl, pin)
+            // 刚固定的书，已经排队的换源推荐作废
+            if (pin) _offers.update { list -> list.filter { it.book.bookUrl != b.bookUrl } }
+            _message.value = if (pin) "《${b.name}》已固定书源，不会再被自动换源或推荐换源" else "《${b.name}》已取消固定书源"
         }
     }
 
@@ -216,7 +230,7 @@ fun ShelfScreen(onOpen: (BookRow) -> Unit, onDetail: (BookRow) -> Unit, onSearch
                     verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(18.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    items(list, key = { it.bookUrl }) { b -> ShelfItem(b, onOpen = { onOpen(b) }, onDetail = { onDetail(b) }, onRemove = { vm.remove(b) }) }
+                    items(list, key = { it.bookUrl }) { b -> ShelfItem(b, onOpen = { onOpen(b) }, onDetail = { onDetail(b) }, onPin = { vm.togglePin(b) }, onRemove = { vm.remove(b) }) }
                 }
               }
             }
@@ -226,16 +240,21 @@ fun ShelfScreen(onOpen: (BookRow) -> Unit, onDetail: (BookRow) -> Unit, onSearch
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ShelfItem(b: BookRow, onOpen: () -> Unit, onDetail: () -> Unit, onRemove: () -> Unit) {
+private fun ShelfItem(b: BookRow, onOpen: () -> Unit, onDetail: () -> Unit, onPin: () -> Unit, onRemove: () -> Unit) {
     var menu by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth().combinedClickable(onClick = onOpen, onLongClick = { menu = true })) {
         Box {
             BookCover(b.coverUrl, b.name, Modifier.fillMaxWidth().aspectRatio(0.75f))
+            if (b.sourcePinned) Box(
+                Modifier.align(Alignment.TopStart).padding(6.dp).size(20.dp).background(androidx.compose.ui.graphics.Color(0x99000000), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) { Icon(Icons.Filled.PushPin, "已固定书源", Modifier.size(12.dp), tint = androidx.compose.ui.graphics.Color.White) }
             if (b.hasUpdate) Box(
                 Modifier.align(Alignment.TopEnd).padding(6.dp).size(10.dp).background(Unread, CircleShape),
             )
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 DropdownMenuItem(text = { Text("书籍详情") }, onClick = { menu = false; onDetail() })
+                DropdownMenuItem(text = { Text(if (b.sourcePinned) "取消固定书源" else "固定书源") }, onClick = { menu = false; onPin() })
                 DropdownMenuItem(text = { Text("移出书架") }, onClick = { menu = false; onRemove() })
             }
         }

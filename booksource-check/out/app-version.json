@@ -1,8 +1,8 @@
 {
-  "versionCode": 15,
-  "versionName": "1.0.14",
-  "notes": "书架刷新分两步：先检查当前书源，再在后台核对所有书源和最新章，找到更完整的书源时问你是否切换；不是 Wi-Fi 时先问你是否核对。听书语速可调到 3 倍。",
-  "url": "https://raw.githubusercontent.com/read0001/read/main/releases/openread-1.0.14.apk",
-  "size": 3277230,
-  "sha256": "099f8a5be36440efd3bc77f4bf6012a0d9c72be551c834442a74ef126b458ca8"
+  "versionCode": 16,
+  "versionName": "1.0.15",
+  "notes": "新增“搜索源”：搜索页可选搜全部书源、只搜固定的、或自选书源（可按分组、名称筛选），选择会记住。书源和书籍都可以“固定”：固定的书源排最前、搜索优先、不会被订阅更新删除；固定了书源的书不再自动换源、不再推荐换源。手动添加的书源默认固定，“导入”改名“添加书源”。换源面板加了“固定当前书源”和按书源名称搜索。",
+  "url": "https://raw.githubusercontent.com/read0001/read/main/releases/openread-1.0.15.apk",
+  "size": 3293614,
+  "sha256": "4c079dace9b7198173222102e22f056512f2ae87acbe2ebcd0dfc1fe4c370bfa"
 }

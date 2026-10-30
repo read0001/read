@@ -107,10 +107,14 @@ import app.openread.data.ReaderPalette
 import app.openread.data.Settings
 import app.openread.engine.SearchBook
 import app.openread.ui.components.DataAskDialog
+import app.openread.ui.components.PinSourceRow
+import app.openread.ui.components.SourceNameFilter
 import app.openread.ui.components.SwitchOfferDialog
+import app.openread.ui.components.filterByName
 import app.openread.ui.components.factory
 import app.openread.ui.detail.TocSheet
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -659,6 +663,8 @@ private fun SwitchSheet(vm: ReaderViewModel, onDismiss: () -> Unit) {
     // Sources answer one by one; each is listed as soon as it has, instead of after the slowest one.
     var list by remember { mutableStateOf<List<SearchBook>>(emptyList()) }
     var searching by remember { mutableStateOf(true) }
+    var query by remember { mutableStateOf("") }
+    val pinned by remember(vm) { vm.state.map { it.book?.sourcePinned == true }.distinctUntilChanged() }.collectAsState(false)
     LaunchedEffect(Unit) {
         runCatching { vm.alternatives().collect { list = it } }
         searching = false
@@ -671,10 +677,17 @@ private fun SwitchSheet(vm: ReaderViewModel, onDismiss: () -> Unit) {
                 Text("继续搜索，已找到 ${list.size} 个", Modifier.padding(start = 8.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
+        PinSourceRow(pinned, vm::togglePin)
+        if (list.isNotEmpty()) SourceNameFilter(query) { query = it }
+        val shown = list.filterByName(query)
         if (list.isEmpty() && searching) Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         else if (list.isEmpty()) Text("其他书源里没有找到这本书", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        else if (shown.isEmpty()) Text(
+            if (searching) "已找到的书源里没有名称包含「${query.trim()}」的，还在继续搜索…" else "没有名称包含「${query.trim()}」的书源",
+            Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         else Column(Modifier.verticalScroll(rememberScrollState())) {
-            list.forEach { a ->
+            shown.forEach { a ->
                 ListItem(
                     headlineContent = { Text(a.originName) },
                     supportingContent = { Text(a.latestChapterTitle?.let { "最新：$it" } ?: a.bookUrl, maxLines = 1, overflow = TextOverflow.Ellipsis) },

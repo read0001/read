@@ -10,6 +10,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import app.openread.data.AppDb
 import app.openread.data.MIGRATION_1_2
+import app.openread.data.MIGRATION_2_3
 import app.openread.ui.update.UpdateController
 import app.openread.data.AppUpdate
 import app.openread.data.Engine
@@ -31,7 +32,7 @@ class AppContainer(app: Application) {
     /** For work that must finish even if the screen that started it is gone, such as saving reading progress. */
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     val prefs = Prefs(app)
-    val db: AppDb = Room.databaseBuilder(app, AppDb::class.java, "openread.db").addMigrations(MIGRATION_1_2).fallbackToDestructiveMigration(true).build()
+    val db: AppDb = Room.databaseBuilder(app, AppDb::class.java, "openread.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3).fallbackToDestructiveMigration(true).build()
     val http = Http(timeoutSec = 15)
     val sources = SourceRepo(db.sources())
     val engine = Engine(http, sources, db.health())

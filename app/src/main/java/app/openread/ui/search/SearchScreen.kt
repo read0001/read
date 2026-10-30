@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.AssistChip
+import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -51,6 +52,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import app.openread.AppContainer
 import app.openread.container
 import app.openread.data.HistoryRow
+import app.openread.data.SearchScope
+import app.openread.data.Settings
+import app.openread.data.SourceBrief
 import app.openread.engine.Freshness
 import app.openread.engine.SearchBook
 import app.openread.ui.components.BookCover
@@ -79,6 +83,52 @@ class SearchViewModel(private val c: AppContainer) : ViewModel() {
     val history: StateFlow<List<HistoryRow>> = c.db.history().recent().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     private var job: Job? = null
 
+    val settings: StateFlow<Settings> = c.prefs.flow.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Settings())
+
+    /** 所有启用的书源：“搜索源”选择面板和计数用。 */
+    val enabledSources: StateFlow<List<SourceBrief>> = c.sources.enabledBrief.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /**
+     * 自选书源的改动：在同一个存储事务里读-改-写（见 Prefs.editSearchSources），快速连点也不会互相覆盖。
+     * [add] 为 true 时加入 [keys]，否则去掉；同时切到“自选”。
+     */
+    fun editCustom(keys: Collection<String>, add: Boolean) {
+        viewModelScope.launch { c.prefs.editSearchSources(pick = true) { if (add) it + keys else it - keys.toSet() } }
+    }
+
+    /** 切换搜索范围。从别的范围切到“自选”、而且已选集合还是空的，就先拿固定的书源预填，免得一进来就是 0 个。 */
+    fun setScope(scope: SearchScope) {
+        viewModelScope.launch {
+            val now = c.prefs.current()
+            if (scope == SearchScope.Custom && now.searchScope != SearchScope.Custom && now.searchSources.isEmpty()) {
+                val pinned = c.sources.enabled().filter { it.pinned }.map { it.key }
+                c.prefs.editSearchSources(pick = true) { it + pinned }
+            } else {
+                c.prefs.update { it.copy(searchScope = scope) }
+            }
+        }
+    }
+
+    /**
+     * 搜索源面板打开时的范围；关闭时和存储里的最新值比较，不一样就按新范围把上一次搜过的词重搜一遍
+     * （新范围里一个书源都没有时也搜：页面会明确提示范围里没有可用的书源，而不是继续显示旧范围的结果）。
+     */
+    private var scopeBefore: Pair<SearchScope, Set<String>>? = null
+
+    fun scopeOpened() {
+        viewModelScope.launch { c.prefs.current().let { scopeBefore = it.searchScope to it.searchSources } }
+    }
+
+    fun scopeClosed() {
+        viewModelScope.launch {
+            val before = scopeBefore ?: return@launch
+            scopeBefore = null
+            val now = c.prefs.current()
+            val keyword = _state.value.keyword
+            if (_state.value.started && keyword.isNotBlank() && before != (now.searchScope to now.searchSources)) search(keyword)
+        }
+    }
+
     fun search(keyword: String) {
         val k = keyword.trim()
         if (k.isEmpty()) return
@@ -86,7 +136,14 @@ class SearchViewModel(private val c: AppContainer) : ViewModel() {
         job = viewModelScope.launch {
             c.db.history().add(HistoryRow(k, System.currentTimeMillis()))
             c.subscription.seedIfEmpty() // first launch: the bundled list may still be going in
-            val rows = c.sources.enabled()
+            // 搜哪些书源，由“搜索源”的设置决定（固定的书源在引擎里本来就优先问）
+            val s = c.prefs.current()
+            val enabled = c.sources.enabled()
+            val rows = when (s.searchScope) {
+                SearchScope.All -> enabled
+                SearchScope.Pinned -> enabled.filter { it.pinned }
+                SearchScope.Custom -> enabled.filter { it.key in s.searchSources }
+            }
             _state.value = SearchState(k, searching = rows.isNotEmpty(), total = rows.size, started = true)
             val index = LinkedHashMap<String, BookGroup>()
             var answered = 0
@@ -114,6 +171,9 @@ fun SearchScreen(initial: String?, onBack: () -> Unit, onOpen: (SearchBook, List
     val vm: SearchViewModel = viewModel(factory = factory { SearchViewModel(ctx.container) })
     val state by vm.state.collectAsState()
     val history by vm.history.collectAsState()
+    val settings by vm.settings.collectAsState()
+    val enabledSources by vm.enabledSources.collectAsState()
+    var showScope by remember { mutableStateOf(false) }
     var text by remember { mutableStateOf(initial.orEmpty()) }
     val focus = remember { FocusRequester() }
 
@@ -144,13 +204,31 @@ fun SearchScreen(initial: String?, onBack: () -> Unit, onOpen: (SearchBook, List
         },
     ) { pad ->
         Column(Modifier.padding(pad).fillMaxSize()) {
+            val scopeLabel = when (settings.searchScope) {
+                SearchScope.All -> "全部书源（${enabledSources.size}）"
+                SearchScope.Pinned -> "固定的书源（${enabledSources.count { it.pinned }}）"
+                SearchScope.Custom -> "自选 ${enabledSources.count { it.key in settings.searchSources }} 个"
+            }
+            AssistChip(
+                onClick = { vm.scopeOpened(); showScope = true },
+                label = { Text("搜索源：$scopeLabel") },
+                leadingIcon = { Icon(Icons.Outlined.FilterList, null) },
+                modifier = Modifier.padding(horizontal = 12.dp),
+            )
             if (state.searching) LinearProgressIndicator(
                 progress = { if (state.total == 0) 0f else state.answered.toFloat() / state.total },
                 modifier = Modifier.fillMaxWidth(),
             )
             when {
                 !state.started -> HistoryList(history.map { it.keyword }, onPick = { text = it; vm.search(it) }, onClear = vm::clearHistory)
-                state.groups.isEmpty() && !state.searching -> EmptyState("没有找到「${state.keyword}」", "换个关键字，或者在书源页启用更多书源")
+                state.groups.isEmpty() && !state.searching -> EmptyState(
+                    "没有找到「${state.keyword}」",
+                    when {
+                        settings.searchScope != SearchScope.All && state.total == 0 -> "“搜索源”的范围里没有可用的书源，点上面的“搜索源”改一下"
+                        settings.searchScope != SearchScope.All -> "只搜了“搜索源”范围内的 ${state.total} 个书源；可以点上面的“搜索源”改成全部书源再试"
+                        else -> "换个关键字，或者在书源页启用更多书源"
+                    },
+                )
                 else -> LazyColumn(Modifier.fillMaxSize()) {
                     if (state.searching) item {
                         Text(
@@ -164,6 +242,12 @@ fun SearchScreen(initial: String?, onBack: () -> Unit, onOpen: (SearchBook, List
             }
         }
     }
+
+    if (showScope) SearchScopeSheet(
+        scope = settings.searchScope, selected = settings.searchSources, sources = enabledSources,
+        onScope = vm::setScope, onEdit = vm::editCustom,
+        onDismiss = { showScope = false; vm.scopeClosed() },
+    )
 }
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
@@ -180,6 +264,7 @@ private fun HistoryList(items: List<String>, onPick: (String) -> Unit, onClear: 
         }
     }
 }
+
 
 @Composable
 private fun ResultRow(g: BookGroup, onClick: () -> Unit) {

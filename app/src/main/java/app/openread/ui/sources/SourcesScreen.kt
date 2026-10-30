@@ -14,7 +14,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.NetworkCheck
 import androidx.compose.material.icons.outlined.Sync
@@ -78,7 +80,29 @@ class SourcesViewModel(private val c: AppContainer) : ViewModel() {
     val ui: StateFlow<SourcesUi> = _ui
 
     fun toggle(r: SourceRow, on: Boolean) { viewModelScope.launch { c.sources.setEnabled(r.key, on) } }
-    fun delete(r: SourceRow) { viewModelScope.launch { c.sources.delete(r.key) } }
+    /**
+     * 点图钉：以库里的当前状态取反（连点两下能来回切换）。订阅里已经没有的源，固定是它唯一留下的理由，
+     * 取消固定会把它删掉，所以那种情况由界面先确认（[confirmedOrphan]）。
+     */
+    fun pin(r: SourceRow, confirmedOrphan: Boolean = false, onNeedConfirm: (SourceRow) -> Unit = {}) {
+        viewModelScope.launch {
+            val row = c.sources.get(r.key) ?: return@launch
+            val on = !row.pinned
+            if (!on && row.orphaned) {
+                if (!confirmedOrphan) { onNeedConfirm(row); return@launch }
+                c.sources.delete(row.key)
+                c.prefs.editSearchSources(pick = false) { it - row.key }
+            } else {
+                c.sources.setPinned(row.key, on)
+            }
+        }
+    }
+    fun delete(r: SourceRow) {
+        viewModelScope.launch {
+            c.sources.delete(r.key)
+            c.prefs.editSearchSources(pick = false) { it - r.key } // 自选搜索范围里也去掉它
+        }
+    }
     fun consume() = _ui.update { it.copy(message = null) }
 
     fun updateSubscription() {
@@ -148,6 +172,7 @@ fun SourcesScreen() {
     val snack = remember { SnackbarHostState() }
     var importing by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf<SourceRow?>(null) }
+    var unpinning by remember { mutableStateOf<SourceRow?>(null) }
 
     LaunchedEffect(ui.message) { ui.message?.let { snack.showSnackbar(it); vm.consume() } }
 
@@ -159,7 +184,7 @@ fun SourcesScreen() {
                 actions = {
                     IconButton(onClick = vm::updateSubscription, enabled = !ui.updating) { Icon(Icons.Outlined.Sync, "更新订阅") }
                     IconButton(onClick = { rows?.let(vm::testAll) }) { Icon(Icons.Outlined.NetworkCheck, "检测全部") }
-                    IconButton(onClick = { importing = true }) { Icon(Icons.Outlined.Add, "导入") }
+                    IconButton(onClick = { importing = true }) { Icon(Icons.Outlined.Add, "添加书源") }
                 },
             )
         },
@@ -172,11 +197,11 @@ fun SourcesScreen() {
                 modifier = Modifier.fillMaxWidth(),
             )
             if (list == null) return@Column
-            if (list.isEmpty()) { EmptyState("还没有书源", "点右上角导入，或更新订阅"); return@Column }
+            if (list.isEmpty()) { EmptyState("还没有书源", "点右上角添加书源，或更新订阅"); return@Column }
             val on = list.count { it.enabled }
             Text(
                 buildString {
-                    append("共 ${list.size} 个，启用 $on 个")
+                    append("共 ${list.size} 个，启用 $on 个，固定 ${list.count { it.pinned }} 个")
                     if (last > 0) append(" · 订阅更新于 ${DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(last))}")
                     if (ui.testTotal > 0) append(" · 检测 ${ui.testDone}/${ui.testTotal}")
                 },
@@ -186,7 +211,7 @@ fun SourcesScreen() {
             if (list.any { it.enabled && it.checkOk == false }) TextButton(onClick = vm::disableFailed, modifier = Modifier.padding(horizontal = 8.dp)) { Text("停用检测失败的书源") }
             LazyColumn(Modifier.fillMaxSize()) {
                 items(list, key = { it.key }) { r ->
-                    SourceItem(r, testing = r.key in ui.testing, onToggle = { vm.toggle(r, it) }, onTest = { vm.test(r) }, onDelete = { deleting = r })
+                    SourceItem(r, testing = r.key in ui.testing, onToggle = { vm.toggle(r, it) }, onPin = { vm.pin(r, onNeedConfirm = { unpinning = it }) }, onTest = { vm.test(r) }, onDelete = { deleting = r })
                     HorizontalDivider()
                 }
             }
@@ -198,6 +223,14 @@ fun SourcesScreen() {
         onDismiss = { importing = false },
         onImport = { importing = false; vm.import(it) },
     )
+    unpinning?.let { r ->
+        AlertDialog(
+            onDismissRequest = { unpinning = null }, title = { Text("取消固定「${r.name}」？") },
+            text = { Text("订阅里已经没有这个书源了，取消固定会把它删除。") },
+            confirmButton = { TextButton(onClick = { vm.pin(r, confirmedOrphan = true); unpinning = null }) { Text("取消固定并删除") } },
+            dismissButton = { TextButton(onClick = { unpinning = null }) { Text("保留") } },
+        )
+    }
     deleting?.let { r ->
         AlertDialog(
             onDismissRequest = { deleting = null }, title = { Text("删除「${r.name}」？") },
@@ -209,7 +242,7 @@ fun SourcesScreen() {
 }
 
 @Composable
-private fun SourceItem(r: SourceRow, testing: Boolean, onToggle: (Boolean) -> Unit, onTest: () -> Unit, onDelete: () -> Unit) {
+private fun SourceItem(r: SourceRow, testing: Boolean, onToggle: (Boolean) -> Unit, onPin: () -> Unit, onTest: () -> Unit, onDelete: () -> Unit) {
     val status = when {
         testing -> "检测中…"
         r.checkOk == true -> "✓ 可用 · ${"%.1f".format(r.checkMs / 1000.0)}s · ${r.checkMsg.orEmpty()}"
@@ -221,7 +254,7 @@ private fun SourceItem(r: SourceRow, testing: Boolean, onToggle: (Boolean) -> Un
         supportingContent = {
             Column {
                 Text(
-                    listOfNotNull(r.key.removePrefix("https://").removePrefix("http://").substringBefore("#"), if (r.subscribed) null else "手动导入").joinToString(" · "),
+                    listOfNotNull(r.key.removePrefix("https://").removePrefix("http://").substringBefore("#"), if (r.subscribed) null else "手动添加", if (r.pinned) "已固定" else null, if (r.orphaned) "订阅里已移除" else null).joinToString(" · "),
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
                 if (status != null) Text(
@@ -233,6 +266,9 @@ private fun SourceItem(r: SourceRow, testing: Boolean, onToggle: (Boolean) -> Un
         },
         trailingContent = {
             Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                IconButton(onClick = onPin) {
+                    Icon(if (r.pinned) Icons.Filled.PushPin else Icons.Outlined.PushPin, if (r.pinned) "取消固定" else "固定", tint = if (r.pinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)
+                }
                 IconButton(onClick = onDelete) { Icon(Icons.Outlined.Delete, "删除") }
                 Switch(checked = r.enabled, onCheckedChange = onToggle)
             }
@@ -246,15 +282,15 @@ private fun ImportDialog(clipboard: () -> String, onDismiss: () -> Unit, onImpor
     var text by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("导入书源") },
+        title = { Text("添加书源") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("粘贴书源 JSON，或填写 JSON 文件的网址。手动导入的书源不会被订阅更新覆盖。", style = MaterialTheme.typography.bodySmall)
+                Text("粘贴书源 JSON，或填写 JSON 文件的网址。手动添加的书源默认固定：排在最前、搜索时优先，订阅更新不会删除或覆盖它。", style = MaterialTheme.typography.bodySmall)
                 OutlinedTextField(text, { text = it }, modifier = Modifier.fillMaxWidth(), minLines = 4, maxLines = 8, placeholder = { Text("https://… 或 [{…}]") })
                 TextButton(onClick = { text = clipboard() }) { Text("粘贴剪贴板") }
             }
         },
-        confirmButton = { TextButton(onClick = { onImport(text) }, enabled = text.isNotBlank()) { Text("导入") } },
+        confirmButton = { TextButton(onClick = { onImport(text) }, enabled = text.isNotBlank()) { Text("添加") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
     )
 }

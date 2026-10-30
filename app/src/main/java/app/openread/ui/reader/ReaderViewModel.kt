@@ -211,7 +211,8 @@ class ReaderViewModel(private val c: AppContainer, bookUrl: String, private val 
                     val p = Position(fresh.chapterIndex, fresh.chapterOffset)
                     _state.update { it.copy(book = fresh, chapters = chapters, position = p, busy = false, message = (if (auto) "已自动换源到 " else "已换到 ") + target.originName) }
                     prefetch(p.index)
-                    checkLatest(target, fresh.bookUrl, others.filter { it.origin != target.origin })
+                    // 固定了书源的书，换源后不再核对最新章、不再推荐别的书源。
+                    if (!fresh.sourcePinned) checkLatest(target, fresh.bookUrl, others.filter { it.origin != target.origin })
                 }
                 .onFailure { e -> _state.update { it.copy(busy = false, message = "换源失败：${e.message}") } }
         }
@@ -260,8 +261,23 @@ class ReaderViewModel(private val c: AppContainer, bookUrl: String, private val 
 
     fun dismissOffer() = _state.update { it.copy(offer = null) }
 
+    /** 固定（或取消固定）这本书的书源。以点击那一刻的当前状态为准，连点两下也会正确地来回切换。 */
+    fun togglePin() {
+        viewModelScope.launch {
+            val url = currentUrl
+            val row = c.library.book(url) ?: return@launch // 书已经不在书架上（或已换到别的 key）
+            val pin = !row.sourcePinned
+            c.library.setSourcePinned(url, pin)
+            if (currentUrl != url) return@launch // 写库期间换了书源：界面状态由换源那条路径更新
+            // 刚固定：正在进行的核对停掉，已经出现的推荐撤掉
+            if (pin) checkJob?.cancel()
+            _state.update { it.copy(book = it.book?.copy(sourcePinned = pin), offer = if (pin) null else it.offer) }
+        }
+    }
+
     /** A chapter would not load: once per reading session, quietly look for the same book elsewhere. */
     private fun autoSwitch() {
+        if (_state.value.book?.sourcePinned == true) return // 书源被固定了：读不出来也不自动换
         if (triedAutoSwitch || !settings.value.autoSwitchSource) return
         triedAutoSwitch = true
         val row = _state.value.book ?: return

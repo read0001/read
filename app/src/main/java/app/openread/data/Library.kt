@@ -39,6 +39,7 @@ import java.util.concurrent.ConcurrentHashMap
 /** All sources, how they are parsed, and how they get in: by hand, or from the subscription. */
 class SourceRepo(private val dao: SourceDao) {
     val all: Flow<List<SourceRow>> = dao.all()
+    val enabledBrief: Flow<List<SourceBrief>> = dao.enabledBrief()
     private val parsed = ConcurrentHashMap<String, Pair<Int, BookSource?>>()
 
     fun parse(row: SourceRow): BookSource? {
@@ -53,16 +54,19 @@ class SourceRepo(private val dao: SourceDao) {
     suspend fun enabled(): List<SourceRow> = dao.enabled()
     suspend fun count(): Int = dao.count()
     suspend fun setEnabled(key: String, enabled: Boolean) = dao.setEnabled(key, enabled)
+    suspend fun setPinned(key: String, pinned: Boolean) = dao.setPinned(key, pinned)
     suspend fun delete(key: String) = dao.delete(key)
 
-    private fun row(src: BookSource, subscribed: Boolean, order: Int) =
-        SourceRow(src.key, src.bookSourceName, src.bookSourceGroup, src.toJson(), src.enabled, subscribed, order)
+    private fun row(src: BookSource, subscribed: Boolean, order: Int, pinned: Boolean = false) =
+        SourceRow(src.key, src.bookSourceName, src.bookSourceGroup, src.toJson(), src.enabled, subscribed, order, pinned = pinned)
 
-    /** Sources imported by hand: they replace a subscribed source with the same key and are never removed by an update. */
+    /** 手动添加的书源：覆盖同 key 的订阅源，不会被订阅更新删除，默认固定（排最前、搜索优先）。 */
     suspend fun import(text: String): Int {
         val list = BookSource.parseList(text)
         val base = dao.count()
-        dao.upsert(list.mapIndexed { i, s -> row(s, subscribed = false, order = -1000 + base + i) })
+        // 已经是手动添加的源再次添加（更新规则）：保留你对它的固定选择，规则和启用状态以新添加的为准；第一次添加才默认固定。
+        val prior = dao.manual().associateBy { it.key }
+        dao.upsert(list.mapIndexed { i, s -> row(s, subscribed = false, order = -1000 + base + i, pinned = prior[s.key]?.pinned ?: true) })
         return list.size
     }
 
@@ -120,7 +124,8 @@ class Engine(val http: Http, private val sources: SourceRepo, private val health
         // A source that failed three searches in a row is left out for a day; it is asked again only if the rest found little.
         val (rested, active) = rows.partition { r -> past[r.key]?.let { it.failStreak >= REST_AFTER && now - it.lastFailAt < REST_MS } == true }
         // Sources that proved fast go first, so the first results arrive quickly; unknown ones sit in the middle.
-        val ordered = active.sortedBy { r -> past[r.key]?.takeIf { it.lastOkAt > 0 }?.avgMs ?: UNKNOWN_MS }
+        // 固定的书源最先问，其余按历史响应速度从快到慢。
+        val ordered = active.sortedWith(compareBy<SourceRow> { if (it.pinned) 0 else 1 }.thenBy { r -> past[r.key]?.takeIf { it.lastOkAt > 0 }?.avgMs ?: UNKNOWN_MS })
         if (rested.isNotEmpty()) send(SearchProgress(emptyList(), counted = false, rested = rested.size))
         val learned = ConcurrentHashMap<String, SourceHealth>()
         val reachable = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -201,6 +206,7 @@ fun Book.toRow(old: BookRow? = null, now: Long = System.currentTimeMillis()) = B
     vars = data.toJson(), addedAt = old?.addedAt ?: now, readAt = now,
     chapterIndex = old?.chapterIndex ?: 0, chapterOffset = old?.chapterOffset ?: 0, chapterTitle = old?.chapterTitle,
     totalChapters = old?.totalChapters ?: 0, hasUpdate = false, checkedAt = now,
+    sourcePinned = old?.sourcePinned ?: false, // 换源后固定状态保留
 )
 
 fun Chapter.toRow(bookUrl: String) = ChapterRow(bookUrl, index, title, url, isVolume, data.variables.let { m -> JsonObject(m.mapValues { JsonPrimitive(it.value) }).toString() })
@@ -211,6 +217,7 @@ class Library(private val context: Context, private val db: AppDb, private val e
 
     fun observe(bookUrl: String) = db.books().observe(bookUrl)
     suspend fun book(bookUrl: String) = db.books().get(bookUrl)
+    suspend fun setSourcePinned(bookUrl: String, pinned: Boolean) = db.books().setSourcePinned(bookUrl, pinned)
     suspend fun chapters(bookUrl: String) = db.chapters().list(bookUrl)
     fun observeChapters(bookUrl: String) = db.chapters().observe(bookUrl)
 
@@ -320,11 +327,17 @@ class Library(private val context: Context, private val db: AppDb, private val e
             async(Dispatchers.IO) {
                 gate.withPermit {
                     val read = runCatching { withTimeoutOrNull(40_000) { reloadToc(b) } }.getOrNull() != null
-                    Triple(b.bookUrl, read, db.books().get(b.bookUrl)?.hasUpdate == true)
+                    // 刷新要几十秒：是否固定、有没有更新，都以刷新结束时库里的最新行为准
+                    val latest = db.books().get(b.bookUrl)
+                    Triple(b.bookUrl, read, latest)
                 }
             }
         }.map { it.await() }
-        UpdateCheck(results.count { it.third }, results.filter { !it.second }.map { it.first }.toSet())
+        // 固定了书源的书，当前书源打不开也不提示（反正不会替它找别的）。
+        UpdateCheck(
+            results.count { it.third?.hasUpdate == true },
+            results.filter { !it.second && it.third?.sourcePinned != true }.map { it.first }.toSet(),
+        )
     }
 
     suspend fun shelfSnapshot(): List<BookRow> = db.books().snapshot()
@@ -356,6 +369,7 @@ class Library(private val context: Context, private val db: AppDb, private val e
 
     private suspend fun verifyBook(b: BookRow, unreachable: Boolean): ShelfOffer? {
         val row = db.books().get(b.bookUrl) ?: return null // removed, or moved to another source, meanwhile
+        if (row.sourcePinned) return null // 用户固定了这本书的书源：不核对、不推荐换源
         val mine = if (unreachable) null else checkLatest(row, force = true)
         if (!unreachable && mine == null) return null // the source answers but its chapters cannot be judged: no verdict
         val others = alternativesFlow(row).lastOrNull().orEmpty().filter { !isDeclined(row, it) }
@@ -375,6 +389,8 @@ class Library(private val context: Context, private val db: AppDb, private val e
             !mine.complete -> truncatedNote(row.originName, mine)
             else -> "「${row.originName}」只到「${row.latestChapter.orEmpty()}」，更新较慢。"
         }
+        // 搜索和核对要很久，这期间这本书可能被固定了：那就不推荐
+        if (db.books().get(b.bookUrl)?.sourcePinned == true) return null
         return ShelfOffer(row, SwitchOffer(better.source, why + betterLine(better) + "\n\n要切换过去吗？"))
     }
 
