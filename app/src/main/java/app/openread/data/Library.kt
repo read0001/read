@@ -43,6 +43,9 @@ import java.io.File
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 
+/** 今天的日期（本地时区），阅读时长按天记。 */
+fun today(): String = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())
+
 /** All sources, how they are parsed, and how they get in: by hand, or from the subscription. */
 class SourceRepo(private val dao: SourceDao) {
     val all: Flow<List<SourceRow>> = dao.all()
@@ -220,17 +223,30 @@ fun Book.toRow(old: BookRow? = null, now: Long = System.currentTimeMillis()) = B
     chapterIndex = old?.chapterIndex ?: 0, chapterOffset = old?.chapterOffset ?: 0, chapterTitle = old?.chapterTitle,
     totalChapters = old?.totalChapters ?: 0, hasUpdate = false, checkedAt = now,
     sourcePinned = old?.sourcePinned ?: false, // 换源后固定状态保留
+    shelfGroup = old?.shelfGroup.orEmpty(),
 )
 
 fun Chapter.toRow(bookUrl: String) = ChapterRow(bookUrl, index, title, url, isVolume, data.variables.let { m -> JsonObject(m.mapValues { JsonPrimitive(it.value) }).toString() })
 
 /** The bookshelf, table-of-contents cache, chapter text cache and source switching. */
-class Library(private val context: Context, private val db: AppDb, private val engine: Engine, private val sources: SourceRepo) {
+class Library(private val context: Context, private val db: AppDb, private val engine: Engine, private val sources: SourceRepo, val filter: ContentFilter) {
     val shelf: Flow<List<BookRow>> = db.books().shelf()
 
     fun observe(bookUrl: String) = db.books().observe(bookUrl)
     suspend fun book(bookUrl: String) = db.books().get(bookUrl)
     suspend fun setSourcePinned(bookUrl: String, pinned: Boolean) = db.books().setSourcePinned(bookUrl, pinned)
+    suspend fun setGroup(bookUrl: String, group: String) = db.books().setGroup(bookUrl, group.trim())
+
+    // ---- 书签 ----
+    fun bookmarks(bookUrl: String) = db.bookmarks().observe(bookUrl)
+    suspend fun addBookmark(row: BookmarkRow) = db.bookmarks().upsert(row)
+    suspend fun deleteBookmark(id: Long) = db.bookmarks().delete(id)
+
+    // ---- 阅读时长 ----
+    suspend fun addReadTime(bookName: String, ms: Long) {
+        if (ms <= 0 || bookName.isBlank()) return
+        db.readLog().add(today(), bookName, ms)
+    }
     suspend fun chapters(bookUrl: String) = db.chapters().list(bookUrl)
     fun observeChapters(bookUrl: String) = db.chapters().observe(bookUrl)
 
@@ -240,10 +256,28 @@ class Library(private val context: Context, private val db: AppDb, private val e
         db.chapters().replace(book.bookUrl, chapters.map { it.toRow(book.bookUrl) })
     }
 
+    /** 本地书导入书架；同一个文件再导入一次，保留原来的进度和分组。 */
+    suspend fun addLocal(imported: LocalBooks.Imported): BookRow {
+        val b = imported.book
+        val old = db.books().get(b.bookUrl)
+        val row = if (old == null) b else b.copy(
+            addedAt = old.addedAt, chapterIndex = old.chapterIndex.coerceAtMost(imported.chapters.lastIndex), chapterOffset = old.chapterOffset,
+            chapterTitle = old.chapterTitle, shelfGroup = old.shelfGroup,
+        )
+        db.withTransaction {
+            db.books().upsert(row)
+            db.chapters().replace(b.bookUrl, imported.chapters)
+        }
+        return row
+    }
+
     suspend fun remove(bookUrl: String) {
+        val row = db.books().get(bookUrl)
         db.books().delete(bookUrl)
         db.chapters().clear(bookUrl)
+        db.bookmarks().clear(bookUrl)
         cacheDir(bookUrl).deleteRecursively()
+        if (row?.isLocal == true) LocalBooks.delete(context, bookUrl)
     }
 
     suspend fun saveProgress(bookUrl: String, index: Int, offset: Int, title: String?) =
@@ -336,7 +370,8 @@ class Library(private val context: Context, private val db: AppDb, private val e
      */
     suspend fun checkUpdates(): UpdateCheck = coroutineScope {
         val gate = Semaphore(4)
-        val results = db.books().snapshot().map { b ->
+        // 本地书没有书源，不用检查更新
+        val results = db.books().snapshot().filter { !it.isLocal }.map { b ->
             async(Dispatchers.IO) {
                 gate.withPermit {
                     val read = runCatching { withTimeoutOrNull(40_000) { reloadToc(b) } }.getOrNull() != null
@@ -353,7 +388,8 @@ class Library(private val context: Context, private val db: AppDb, private val e
         )
     }
 
-    suspend fun shelfSnapshot(): List<BookRow> = db.books().snapshot()
+    /** 要核对书源的书（本地书没有书源，不算）。 */
+    suspend fun shelfSnapshot(): List<BookRow> = db.books().snapshot().filter { !it.isLocal }
 
     /**
      * The second half of a shelf refresh, once [checkUpdates] has read every current source: for each book, the current
@@ -382,7 +418,7 @@ class Library(private val context: Context, private val db: AppDb, private val e
 
     private suspend fun verifyBook(b: BookRow, unreachable: Boolean): ShelfOffer? {
         val row = db.books().get(b.bookUrl) ?: return null // removed, or moved to another source, meanwhile
-        if (row.sourcePinned) return null // 用户固定了这本书的书源：不核对、不推荐换源
+        if (row.sourcePinned || row.isLocal) return null // 用户固定了这本书的书源（或是本地书）：不核对、不推荐换源
         val mine = if (unreachable) null else checkLatest(row, force = true)
         if (!unreachable && mine == null) return null // the source answers but its chapters cannot be judged: no verdict
         val others = alternativesFlow(row).lastOrNull().orEmpty().filter { !isDeclined(row, it) }
@@ -421,25 +457,53 @@ class Library(private val context: Context, private val db: AppDb, private val e
 
     // ---- chapter text cache --------------------------------------------------------------------------------------
 
-    private fun cacheDir(bookUrl: String): File {
-        val h = MessageDigest.getInstance("MD5").digest(bookUrl.toByteArray()).joinToString("") { "%02x".format(it) }
-        return File(context.filesDir, "chapters/$h")
-    }
+    private fun md5(s: String) = MessageDigest.getInstance("MD5").digest(s.toByteArray()).joinToString("") { "%02x".format(it) }
+
+    private fun cacheDir(bookUrl: String): File = File(context.filesDir, "chapters/${md5(bookUrl)}")
 
     /** Keyed by the chapter's address, not its index, so a table of contents that shifts never shows the wrong text. */
-    private fun cacheFile(bookUrl: String, chapterUrl: String): File {
-        val h = MessageDigest.getInstance("MD5").digest(chapterUrl.toByteArray()).joinToString("") { "%02x".format(it) }
-        return File(cacheDir(bookUrl), "$h.txt")
-    }
+    private fun cacheFile(bookUrl: String, chapterUrl: String): File = File(cacheDir(bookUrl), "${md5(chapterUrl)}.txt")
 
     fun isCached(bookUrl: String, ch: ChapterRow) = cacheFile(bookUrl, ch.url).exists()
+
+    /** 这本书已经缓存了几章（本地书都算已缓存）。 */
+    suspend fun cachedCount(row: BookRow, chapters: List<ChapterRow>): Int = withContext(Dispatchers.IO) {
+        if (row.isLocal) return@withContext chapters.size
+        val names = cacheDir(row.bookUrl).list()?.toHashSet() ?: return@withContext 0
+        chapters.count { it.isVolume || md5(it.url) + ".txt" in names }
+    }
+
+    /** 删掉一本书缓存的正文（本地书的正文就是导入的文件，不删）。 */
+    suspend fun clearCache(row: BookRow) = withContext(Dispatchers.IO) { if (!row.isLocal) cacheDir(row.bookUrl).deleteRecursively() }
+
+    /** 所有书缓存的正文占了多少字节。 */
+    suspend fun cacheBytes(): Long = withContext(Dispatchers.IO) { File(context.filesDir, "chapters").walkBottomUp().filter { it.isFile }.sumOf { it.length() } }
+
+    /** 清掉所有缓存的正文（书架和进度不动，再读时重新下载）。 */
+    suspend fun clearAllCache() = withContext(Dispatchers.IO) { File(context.filesDir, "chapters").deleteRecursively() }
+
+    /** 只下载并存盘（缓存用），不做正文过滤。 */
+    suspend fun download(row: BookRow, ch: ChapterRow) { source(row, ch) }
+
+    /**
+     * 给阅读和听书用的正文：缓存或书源里的原文，经过替换规则和繁简转换（见 [ContentFilter]）。[refresh] 重新从书源下载。
+     */
+    suspend fun text(row: BookRow, ch: ChapterRow, refresh: Boolean = false): String {
+        val raw = source(row, ch, refresh)
+        filter.ready()
+        return withContext(Dispatchers.Default) { filter.body(raw, row.name) }
+    }
+
+    /** 章节名的显示形式（繁简转换）。 */
+    fun title(t: String) = filter.title(t)
 
     /**
      * Chapter text from disk, or from the book's source (and then saved). [refresh] skips and replaces the saved copy.
      * With [guard], a short chapter that turns out to be a teaser padded with other novels' sentences is trimmed (see
      * [PreviewGuard]); the early chapters used as reference are read with it off.
      */
-    suspend fun text(row: BookRow, ch: ChapterRow, refresh: Boolean = false, guard: Boolean = true): String = withContext(Dispatchers.IO) {
+    private suspend fun source(row: BookRow, ch: ChapterRow, refresh: Boolean = false, guard: Boolean = true): String = withContext(Dispatchers.IO) {
+        if (row.isLocal) return@withContext LocalBooks.chapterText(context, row, ch)
         val f = cacheFile(row.bookUrl, ch.url)
         if (!refresh && f.exists()) return@withContext f.readText()
         val web = engine.web(row.origin) ?: error("书源已被删除")
@@ -466,7 +530,7 @@ class Library(private val context: Context, private val db: AppDb, private val e
     private suspend fun referenceFor(row: BookRow, all: List<ChapterRow>, except: Int): PreviewGuard.Reference? = referenceLock.withLock {
         if (references.containsKey(row.bookUrl)) return@withLock references[row.bookUrl]
         val early = all.filter { !it.isVolume && it.idx != except && it.idx in 3..24 }.take(40).let { c -> listOfNotNull(c.getOrNull(2), c.getOrNull(12)) }
-        val texts = early.mapNotNull { runCatching { text(row, it, guard = false) }.getOrNull() }
+        val texts = early.mapNotNull { runCatching { source(row, it, guard = false) }.getOrNull() }
         PreviewGuard.reference(texts).also { references[row.bookUrl] = it }
     }
 
@@ -549,10 +613,17 @@ class Library(private val context: Context, private val db: AppDb, private val e
             chapterTitle = toc[index].title, totalChapters = toc.size, latestChapter = toc.last().title,
         )
         db.withTransaction {
+            // 书签跟着书走：按章节名找新目录里的同一章，找不到按序号
+            val marks = db.bookmarks().list(row.bookUrl).map { m ->
+                val i = toc.indexOfFirst { it.title == m.chapterTitle }.takeIf { it >= 0 } ?: m.chapterIndex.coerceIn(0, toc.lastIndex)
+                m.copy(bookUrl = fresh.bookUrl, chapterIndex = i, offset = if (toc[i].title == m.chapterTitle) m.offset else 0)
+            }
+            db.bookmarks().clear(row.bookUrl)
             db.books().delete(row.bookUrl)
             db.chapters().clear(row.bookUrl)
             db.books().upsert(fresh)
             db.chapters().replace(fresh.bookUrl, toc.map { it.toRow(fresh.bookUrl) })
+            if (marks.isNotEmpty()) db.bookmarks().upsertAll(marks)
         }
         cacheDir(row.bookUrl).deleteRecursively()
         fresh

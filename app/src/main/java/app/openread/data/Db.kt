@@ -64,7 +64,48 @@ data class BookRow(
     val checkedAt: Long = 0,
     /** 固定这本书的书源：刷新核对、自动换源、换源推荐都不再动它，直到取消固定。 */
     @androidx.room.ColumnInfo(defaultValue = "0") val sourcePinned: Boolean = false,
+    /** 书架分组，空 = 未分组。 */
+    @androidx.room.ColumnInfo(defaultValue = "") val shelfGroup: String = "",
 )
+
+/** 本地导入的书（TXT / EPUB）的 origin：没有书源，正文从本地文件读。 */
+const val LOCAL_ORIGIN = "local"
+
+val BookRow.isLocal: Boolean get() = origin == LOCAL_ORIGIN
+
+/** 书签：书、章节和章内位置（显示文字里的字符偏移），加上一小段摘录。 */
+@Entity(tableName = "bookmarks")
+data class BookmarkRow(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val bookUrl: String,
+    val chapterIndex: Int,
+    val chapterTitle: String,
+    val offset: Int,
+    val excerpt: String,
+    val createdAt: Long,
+)
+
+/**
+ * 替换规则（净化 / 屏蔽词）：正文里的 [pattern] 换成 [replacement]（留空就是删掉）。[scope] 为空对所有书生效，
+ * 否则只对书名包含它的书生效。
+ */
+@Entity(tableName = "replace_rules")
+data class ReplaceRule(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val pattern: String,
+    val replacement: String,
+    val isRegex: Boolean,
+    val enabled: Boolean,
+    val scope: String,
+    val orderNo: Int,
+)
+
+/** 每天每本书读了多久（毫秒），按书名记：换源后仍算同一本。 */
+@Entity(tableName = "read_log", primaryKeys = ["day", "bookName"])
+data class ReadLog(val day: String, val bookName: String, val ms: Long)
+
+/** 一本书的累计阅读时长。 */
+data class BookTime(val bookName: String, val ms: Long)
 
 @Entity(tableName = "chapters", primaryKeys = ["bookUrl", "idx"])
 data class ChapterRow(
@@ -196,6 +237,83 @@ interface BookDao {
 
     @Query("UPDATE books SET sourcePinned = :pinned WHERE bookUrl = :url")
     suspend fun setSourcePinned(url: String, pinned: Boolean)
+
+    @Query("UPDATE books SET shelfGroup = :group WHERE bookUrl = :url")
+    suspend fun setGroup(url: String, group: String)
+}
+
+@Dao
+interface BookmarkDao {
+    @Query("SELECT * FROM bookmarks WHERE bookUrl = :bookUrl ORDER BY chapterIndex, `offset`")
+    fun observe(bookUrl: String): Flow<List<BookmarkRow>>
+
+    @Query("SELECT * FROM bookmarks")
+    suspend fun all(): List<BookmarkRow>
+
+    @Query("SELECT * FROM bookmarks WHERE bookUrl = :bookUrl")
+    suspend fun list(bookUrl: String): List<BookmarkRow>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(row: BookmarkRow): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(rows: List<BookmarkRow>)
+
+    @Query("DELETE FROM bookmarks WHERE id = :id")
+    suspend fun delete(id: Long)
+
+    @Query("DELETE FROM bookmarks WHERE bookUrl = :bookUrl")
+    suspend fun clear(bookUrl: String)
+}
+
+@Dao
+interface ReplaceRuleDao {
+    @Query("SELECT * FROM replace_rules ORDER BY orderNo, id")
+    fun observe(): Flow<List<ReplaceRule>>
+
+    @Query("SELECT * FROM replace_rules ORDER BY orderNo, id")
+    suspend fun all(): List<ReplaceRule>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(row: ReplaceRule): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(rows: List<ReplaceRule>)
+
+    @Query("DELETE FROM replace_rules WHERE id = :id")
+    suspend fun delete(id: Long)
+}
+
+@Dao
+interface ReadLogDao {
+    @Query("UPDATE read_log SET ms = ms + :ms WHERE day = :day AND bookName = :bookName")
+    suspend fun addTo(day: String, bookName: String, ms: Long): Int
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insert(row: ReadLog)
+
+    @Transaction
+    suspend fun add(day: String, bookName: String, ms: Long) {
+        if (addTo(day, bookName, ms) == 0) insert(ReadLog(day, bookName, ms))
+    }
+
+    @Query("SELECT COALESCE(SUM(ms), 0) FROM read_log WHERE day = :day")
+    fun dayTotal(day: String): Flow<Long>
+
+    @Query("SELECT COALESCE(SUM(ms), 0) FROM read_log WHERE day >= :from")
+    fun since(from: String): Flow<Long>
+
+    @Query("SELECT COALESCE(SUM(ms), 0) FROM read_log")
+    fun total(): Flow<Long>
+
+    @Query("SELECT bookName, SUM(ms) AS ms FROM read_log GROUP BY bookName ORDER BY ms DESC LIMIT 20")
+    fun perBook(): Flow<List<BookTime>>
+
+    @Query("SELECT * FROM read_log")
+    suspend fun all(): List<ReadLog>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(rows: List<ReadLog>)
 }
 
 @Dao
@@ -243,13 +361,19 @@ interface HistoryDao {
     suspend fun clear()
 }
 
-@Database(entities = [SourceRow::class, BookRow::class, ChapterRow::class, HistoryRow::class, SourceHealth::class], version = 3, exportSchema = true)
+@Database(
+    entities = [SourceRow::class, BookRow::class, ChapterRow::class, HistoryRow::class, SourceHealth::class, BookmarkRow::class, ReplaceRule::class, ReadLog::class],
+    version = 4, exportSchema = true,
+)
 abstract class AppDb : RoomDatabase() {
     abstract fun sources(): SourceDao
     abstract fun books(): BookDao
     abstract fun chapters(): ChapterDao
     abstract fun history(): HistoryDao
     abstract fun health(): HealthDao
+    abstract fun bookmarks(): BookmarkDao
+    abstract fun replaceRules(): ReplaceRuleDao
+    abstract fun readLog(): ReadLogDao
 }
 
 /** 1 → 2 only adds a table; the shelf, chapters and sources are kept. */
@@ -267,5 +391,15 @@ val MIGRATION_2_3 = object : androidx.room.migration.Migration(2, 3) {
         db.execSQL("ALTER TABLE `books` ADD COLUMN `sourcePinned` INTEGER NOT NULL DEFAULT 0")
         // 手动添加的书源本来就不会被订阅动，新版里默认固定：升级后保持一致。
         db.execSQL("UPDATE `sources` SET `pinned` = 1 WHERE `subscribed` = 0")
+    }
+}
+
+/** 3 → 4 新增书签、替换规则、阅读时长三张表，书架加分组列；已有数据原样保留。 */
+val MIGRATION_3_4 = object : androidx.room.migration.Migration(3, 4) {
+    override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `books` ADD COLUMN `shelfGroup` TEXT NOT NULL DEFAULT ''")
+        db.execSQL("CREATE TABLE IF NOT EXISTS `bookmarks` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `bookUrl` TEXT NOT NULL, `chapterIndex` INTEGER NOT NULL, `chapterTitle` TEXT NOT NULL, `offset` INTEGER NOT NULL, `excerpt` TEXT NOT NULL, `createdAt` INTEGER NOT NULL)")
+        db.execSQL("CREATE TABLE IF NOT EXISTS `replace_rules` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `pattern` TEXT NOT NULL, `replacement` TEXT NOT NULL, `isRegex` INTEGER NOT NULL, `enabled` INTEGER NOT NULL, `scope` TEXT NOT NULL, `orderNo` INTEGER NOT NULL)")
+        db.execSQL("CREATE TABLE IF NOT EXISTS `read_log` (`day` TEXT NOT NULL, `bookName` TEXT NOT NULL, `ms` INTEGER NOT NULL, PRIMARY KEY(`day`, `bookName`))")
     }
 }

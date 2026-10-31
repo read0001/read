@@ -45,6 +45,10 @@ object ReadAloud {
         /** What is being read (or, while paused or loading, where reading will go on from); a zero-width span has nothing to highlight yet. */
         val span: Span? = null,
         val message: String? = null,
+        /** 定时关闭：到这个时间（毫秒时间戳）停止；0 = 没有定时。 */
+        val sleepAt: Long = 0,
+        /** 定时关闭：读完当前这一章就停。 */
+        val sleepAfterChapter: Boolean = false,
     )
 
     /** A place in the book: a chapter, a paragraph in it and a character in that paragraph. */
@@ -125,6 +129,7 @@ object ReadAloud {
         job?.cancel()
         job = null
         rateJob?.cancel()
+        sleepJob?.cancel()
         voice?.stop()
         dropOffline()
         _state.value = State()
@@ -152,10 +157,41 @@ object ReadAloud {
 
     fun consumeMessage() = _state.update { it.copy(message = null) }
 
+    private var sleepJob: Job? = null
+
+    /** 定时关闭：[minutes] 分钟后停止；null 取消定时。 */
+    fun sleepIn(minutes: Int?) {
+        sleepJob?.cancel()
+        val app = container ?: return
+        if (minutes == null || !_state.value.active) { _state.update { it.copy(sleepAt = 0, sleepAfterChapter = false) }; return }
+        val at = System.currentTimeMillis() + minutes * 60_000L
+        _state.update { it.copy(sleepAt = at, sleepAfterChapter = false) }
+        sleepJob = app.appScope.launch {
+            delay(minutes * 60_000L)
+            if (_state.value.sleepAt == at) { stop(); _state.update { it.copy(message = "定时结束，已停止听书") } }
+        }
+    }
+
+    /** 定时关闭：读完这一章就停。 */
+    fun sleepAfterChapter() {
+        sleepJob?.cancel()
+        if (_state.value.active) _state.update { it.copy(sleepAt = 0, sleepAfterChapter = true) }
+    }
+
+    /** 上一章 / 下一章（耳机、通知栏的切歌键）：从那一章开头读。 */
+    fun skipChapter(delta: Int) {
+        val s = _state.value
+        if (!s.active) return
+        val target = s.chapterIndex + delta
+        if (target !in chapters.indices) return
+        val at = Point(target, 0, 0)
+        if (s.playing) restart(at) else moveTo(at)
+    }
+
     /** Marks [at] as the place reading will (re)start from, without speaking. */
     private fun moveTo(at: Point) {
         resumeAt = at
-        _state.update { it.copy(chapterIndex = at.chapter, chapter = chapters.getOrNull(at.chapter)?.title ?: it.chapter, span = Span(at.paragraph, at.char, at.char)) }
+        _state.update { it.copy(chapterIndex = at.chapter, chapter = chapters.getOrNull(at.chapter)?.title?.let { t -> container?.library?.title(t) ?: t } ?: it.chapter, span = Span(at.paragraph, at.char, at.char)) }
     }
 
     private fun restart(at: Point) {
@@ -177,10 +213,10 @@ object ReadAloud {
             val ch = chapters.getOrNull(index) ?: return finish()
             val row = app.library.book(bookUrl) ?: return fail("这本书不在书架上")
             if (ch.isVolume) { index++; from = 0; fromChar = 0; continue }
-            _state.update { it.copy(chapterIndex = index, book = row.name, chapter = ch.title, playing = true, active = true) }
+            _state.update { it.copy(chapterIndex = index, book = row.name, chapter = app.library.title(ch.title), playing = true, active = true) }
 
             val raw = runCatching { app.library.text(row, ch) }.getOrNull() ?: return fail("「${ch.title}」读不出来，换个书源试试")
-            val paragraphs = paragraphs(ch.title, raw)
+            val paragraphs = paragraphs(app.library.title(ch.title), raw)
             val first = from.coerceIn(0, paragraphs.lastIndex)
             moveTo(Point(index, first, if (first == from) fromChar else 0))
 
@@ -210,6 +246,11 @@ object ReadAloud {
                 // Carry on from the same sentence with the next voice.
                 at++
                 _state.update { it.copy(message = "$why，已改用${order[at].label}语音") }
+            }
+            if (_state.value.sleepAfterChapter) {
+                stop()
+                _state.update { it.copy(message = "本章读完了，已停止听书") }
+                return
             }
             index++
             from = 0
@@ -293,11 +334,13 @@ object ReadAloud {
 
     /** The service notices the session ending from [state] and stops itself. */
     private fun finish() {
+        sleepJob?.cancel()
         dropOffline()
         _state.value = State()
     }
 
     private fun fail(message: String) {
+        sleepJob?.cancel()
         dropOffline()
         _state.value = State(message = message)
     }

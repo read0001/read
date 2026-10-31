@@ -43,6 +43,20 @@ class MainActivity : ComponentActivity() {
         handleImport(intent)
     }
 
+    /** 阅读页开着“音量键翻页”时，音量键用来翻页（按住不连发，松开的那一下也吃掉，免得系统弹出音量条）。 */
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        val code = event.keyCode
+        if (code == android.view.KeyEvent.KEYCODE_VOLUME_DOWN || code == android.view.KeyEvent.KEYCODE_VOLUME_UP) {
+            val h = app.openread.ui.reader.ReaderKeys.handler
+            if (h != null) {
+                if (event.action == android.view.KeyEvent.ACTION_DOWN) {
+                    if (event.repeatCount > 0 || h(code == android.view.KeyEvent.KEYCODE_VOLUME_DOWN)) return true
+                } else if (event.action == android.view.KeyEvent.ACTION_UP) return true
+            }
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleImport(intent)

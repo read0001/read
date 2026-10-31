@@ -43,13 +43,44 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(onRules: () -> Unit = {}, onStats: () -> Unit = {}) {
     val ctx = LocalContext.current
     val prefs = ctx.container.prefs
     val s by prefs.flow.collectAsState(initial = Settings())
     val scope = rememberCoroutineScope()
     var base by remember(s.subscriptionBase) { mutableStateOf(s.subscriptionBase) }
     var status by remember { mutableStateOf<String?>(null) }
+    var cacheBytes by remember { mutableStateOf<Long?>(null) }
+    var confirmRestore by remember { mutableStateOf<android.net.Uri?>(null) }
+    androidx.compose.runtime.LaunchedEffect(Unit) { cacheBytes = ctx.container.library.cacheBytes() }
+    fun toast(t: String) = android.widget.Toast.makeText(ctx, t, android.widget.Toast.LENGTH_LONG).show()
+    val exportTo = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri != null) scope.launch {
+            runCatching { ctx.container.backup.export(uri) }
+                .onSuccess { toast("已备份：${it.books} 本书、${it.bookmarks} 个书签、${it.rules} 条规则、${it.sources} 个手动书源和全部设置") }
+                .onFailure { toast("备份失败：${it.message}") }
+        }
+    }
+    val restoreFrom = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri -> confirmRestore = uri }
+    val askNotify = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
+    confirmRestore?.let { uri ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { confirmRestore = null },
+            title = { Text("从备份恢复？") },
+            text = { Text("书架上同一本书的阅读进度、书签和全部设置会换成备份里的；备份里没有的书、规则不受影响。") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmRestore = null
+                    scope.launch {
+                        runCatching { ctx.container.backup.restore(uri) }
+                            .onSuccess { toast("已恢复：${it.books} 本书、${it.bookmarks} 个书签、${it.rules} 条规则、${it.sources} 个手动书源") }
+                            .onFailure { toast("恢复失败：${it.message}") }
+                    }
+                }) { Text("恢复") }
+            },
+            dismissButton = { TextButton(onClick = { confirmRestore = null }) { Text("取消") } },
+        )
+    }
 
     Scaffold(contentWindowInsets = WindowInsets(0, 0, 0, 0), topBar = { CenterAlignedTopAppBar(title = { Text("设置") }) }) { pad ->
         Column(Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState())) {
@@ -75,6 +106,34 @@ fun SettingsScreen() {
             ListItem(
                 headlineContent = { Text("阅读时保持亮屏") },
                 trailingContent = { Switch(s.keepScreenOn, { v -> scope.launch { prefs.update { it.copy(keepScreenOn = v) } } }) },
+            )
+            ListItem(
+                headlineContent = { Text("屏蔽词 / 替换规则") }, supportingContent = { Text("去掉正文里的广告句，或把文字换成别的") },
+                modifier = Modifier.clickable(onClick = onRules),
+            )
+            ListItem(headlineContent = { Text("阅读统计") }, supportingContent = { Text("今天、最近 7 天读了多久") }, modifier = Modifier.clickable(onClick = onStats))
+            ListItem(
+                headlineContent = { Text("书架更新提醒") }, supportingContent = { Text("连着 Wi-Fi 时每 6 小时检查一次，有新章节发通知") },
+                trailingContent = {
+                    Switch(s.notifyUpdates, { v ->
+                        scope.launch { prefs.update { it.copy(notifyUpdates = v) } }
+                        if (v && android.os.Build.VERSION.SDK_INT >= 33) askNotify.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                    })
+                },
+            )
+            HorizontalDivider()
+            Section("数据")
+            ListItem(
+                headlineContent = { Text("备份到文件") }, supportingContent = { Text("书架、进度、书签、规则、手动书源和设置（不含正文缓存和本地书）") },
+                modifier = Modifier.clickable { exportTo.launch("openread-backup-" + java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US).format(java.util.Date()) + ".json") },
+            )
+            ListItem(headlineContent = { Text("从备份恢复") }, modifier = Modifier.clickable { restoreFrom.launch(arrayOf("application/json", "application/octet-stream", "text/plain")) })
+            ListItem(
+                headlineContent = { Text("清除正文缓存") },
+                supportingContent = { Text(cacheBytes?.let { "已占用 %.1f MB，清除后再读会重新下载".format(it / 1048576.0) } ?: "正在统计…") },
+                modifier = Modifier.clickable {
+                    scope.launch { ctx.container.library.clearAllCache(); cacheBytes = ctx.container.library.cacheBytes(); toast("已清除正文缓存") }
+                },
             )
             HorizontalDivider()
             Section("书源订阅")

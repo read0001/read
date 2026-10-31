@@ -1,6 +1,9 @@
 package app.openread.ui.reader
 
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.ParagraphStyle
+import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
@@ -29,14 +32,26 @@ class ChapterPages(val title: String, val pages: List<Page>, val paragraphs: Lis
     fun copyWith(paragraphs: List<String>, starts: IntArray) = ChapterPages(title, pages, paragraphs, starts)
 }
 
+/**
+ * 排版：段首缩进和段间距（单位 sp，0 = 不额外留空）。
+ *
+ * 不论怎么排，显示文字里每个字的位置都不变：不缩进时用两个零宽字符占住缩进的位置，段间距用一个单独成段、行高等于
+ * 段间距的零宽字符代替换行符。所以保存的阅读位置、书签、听书高亮都不受排版设置影响。
+ */
+data class Typeset(val indent: Boolean = true, val gapSp: Float = 0f)
+
 object Paginator {
     private const val INDENT = "　　"
+    private const val NO_INDENT = "\u200B\u200B"
+
+    /** 行高样式：每一行（包括每段的首行和末行）都留同样的行距，分段排版时段落之间才不会挤在一起。 */
+    val LineHeights = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None)
 
     /** Title, a blank line, then paragraphs with a two-character first-line indent. */
-    fun display(title: String, body: String, titleSize: TextUnit): AnnotatedString = buildAnnotatedString {
+    fun display(title: String, body: String, titleSize: TextUnit, typeset: Typeset = Typeset()): AnnotatedString = buildAnnotatedString {
         withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = titleSize)) { append(title) }
         append("\n\n")
-        append(body(body))
+        append(body(body, typeset))
     }
 
     /**
@@ -66,13 +81,24 @@ object Paginator {
     }
 
     /** Paragraphs only, each with the first-line indent. */
-    fun body(body: String): AnnotatedString = buildAnnotatedString {
+    fun body(body: String, typeset: Typeset = Typeset()): AnnotatedString = buildAnnotatedString {
+        val indent = if (typeset.indent) INDENT else NO_INDENT
         body.lineSequence().filter { it.isNotBlank() }.forEachIndexed { i, line ->
-            if (i > 0) append('\n')
-            append(INDENT)
+            if (i > 0) {
+                if (typeset.gapSp > 0f) {
+                    // 段间距：一个单独成段的零宽字符，行高就是段间距（和换行符一样占一个字符）
+                    withStyle(ParagraphStyle(lineHeight = typeset.gapSp.sp, lineHeightStyle = LineHeights)) {
+                        withStyle(SpanStyle(fontSize = 1.sp)) { append('\u200B') }
+                    }
+                } else append('\n')
+            }
+            append(indent)
             append(line.trim())
         }
     }
+
+    /** 显示文字去掉排版用的零宽字符（复制、分享用）。 */
+    fun plain(text: CharSequence): String = text.toString().replace("\u200B", "")
 
     /** Splits the chapter into pages that fit [widthPx] x [heightPx], whatever the line heights are. */
     fun paginate(measurer: TextMeasurer, text: AnnotatedString, style: TextStyle, widthPx: Int, heightPx: Int, title: String): ChapterPages {

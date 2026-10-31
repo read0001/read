@@ -46,6 +46,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 import app.openread.data.PageMode
+import app.openread.data.PageAnim
+import app.openread.data.ChineseConvert
+import app.openread.data.ContentFilter
+import kotlinx.coroutines.launch
 import app.openread.container
 import app.openread.data.ReaderPalette
 import app.openread.data.Settings
@@ -71,6 +75,13 @@ fun SettingsSheet(settings: Settings, update: ((Settings) -> Settings) -> Unit, 
                     FilterChip(selected = settings.lineSpacing == v, onClick = { update { it.copy(lineSpacing = v) } }, label = { Text("%.1f".format(v)) }, modifier = Modifier.padding(end = 8.dp))
                 }
             }
+            ChipRow("段距", listOf(0f to "无", 0.3f to "小", 0.6f to "中", 1f to "大"), settings.paragraphGap) { v -> update { it.copy(paragraphGap = v) } }
+            ChipRow("边距", listOf(12 to "窄", 22 to "中", 32 to "宽", 44 to "很宽"), settings.sideMargin) { v -> update { it.copy(sideMargin = v) } }
+            FontRow(settings, update)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("段首缩进两字", Modifier.weight(1f))
+                Switch(settings.indent, { v -> update { it.copy(indent = v) } })
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("背景", Modifier.padding(end = 16.dp))
                 ReaderPalette.entries.forEach { p ->
@@ -90,6 +101,28 @@ fun SettingsSheet(settings: Settings, update: ((Settings) -> Settings) -> Unit, 
                         shape = SegmentedButtonDefaults.itemShape(i, PageMode.entries.size),
                     ) { Text(m.label) }
                 }
+            }
+            if (settings.pageMode == PageMode.Slide) {
+                ChipRow("动画", PageAnim.entries.map { it to it.label }, settings.pageAnim) { v -> update { it.copy(pageAnim = v) } }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("自动翻页", Modifier.padding(end = 16.dp))
+                Slider(
+                    value = settings.autoPageSeconds.toFloat(), onValueChange = { v -> update { it.copy(autoPageSeconds = v.roundToInt()) } },
+                    valueRange = 3f..60f, modifier = Modifier.weight(1f),
+                )
+                Text(if (settings.pageMode == PageMode.Slide) "${settings.autoPageSeconds} 秒/页" else "${settings.autoPageSeconds} 秒/屏")
+            }
+            Column {
+                ChipRow("繁简", ChineseConvert.entries.map { it to it.label }, settings.chineseConvert, enabled = ContentFilter.convertSupported) { v -> update { it.copy(chineseConvert = v) } }
+                if (!ContentFilter.convertSupported) Text("繁简转换需要 Android 10 及以上", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("音量键翻页")
+                    Text("听书时音量键照常调音量", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(settings.volumeKeys, { v -> update { it.copy(volumeKeys = v) } })
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("亮度", Modifier.padding(end = 16.dp))
@@ -136,6 +169,75 @@ fun SettingsSheet(settings: Settings, update: ((Settings) -> Settings) -> Unit, 
             }
         }
     }
+}
+
+/** 一行标签选项：左边是名称，右边一排可选的值。 */
+@Composable
+private fun <T> ChipRow(label: String, options: List<Pair<T, String>>, selected: T, enabled: Boolean = true, onPick: (T) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(label, Modifier.padding(end = 16.dp))
+        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            options.forEach { (v, text) -> FilterChip(selected = selected == v, onClick = { onPick(v) }, label = { Text(text) }, enabled = enabled) }
+        }
+    }
+}
+
+/**
+ * 字体：系统默认、衬线（宋体类）、等宽，以及导入的字体文件（TTF / OTF，存到 filesDir/fonts/）。选中导入的字体时可以删掉它。
+ */
+@Composable
+private fun FontRow(settings: Settings, update: ((Settings) -> Settings) -> Unit) {
+    val ctx = LocalContext.current
+    val dir = remember { java.io.File(ctx.filesDir, "fonts") }
+    var files by remember { mutableStateOf(dir.list()?.sorted().orEmpty()) }
+    var deleting by remember { mutableStateOf<String?>(null) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val pick = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val name = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { importFont(ctx, uri, dir) }
+            if (name == null) android.widget.Toast.makeText(ctx, "不是可用的字体文件（支持 TTF / OTF）", android.widget.Toast.LENGTH_LONG).show()
+            else { files = dir.list()?.sorted().orEmpty(); update { it.copy(readerFont = name) } }
+        }
+    }
+    Row(verticalAlignment = Alignment.Top) {
+        Text("字体", Modifier.padding(end = 16.dp, top = 12.dp))
+        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            (listOf("" to "默认", "serif" to "衬线", "mono" to "等宽") + files.map { it to it.substringBeforeLast('.') }).forEach { (v, text) ->
+                FilterChip(selected = settings.readerFont == v, onClick = { update { it.copy(readerFont = v) } }, label = { Text(text, maxLines = 1) })
+            }
+            androidx.compose.material3.AssistChip(onClick = { pick.launch(arrayOf("*/*")) }, label = { Text("导入字体") })
+            if (settings.readerFont in files) androidx.compose.material3.AssistChip(onClick = { deleting = settings.readerFont }, label = { Text("删除这个字体") })
+        }
+    }
+    deleting?.let { name ->
+        AlertDialog(
+            onDismissRequest = { deleting = null }, title = { Text("删除字体？") }, text = { Text(name) },
+            confirmButton = {
+                TextButton({
+                    java.io.File(dir, name).delete()
+                    files = dir.list()?.sorted().orEmpty()
+                    if (settings.readerFont == name) update { it.copy(readerFont = "") }
+                    deleting = null
+                }) { Text("删除") }
+            },
+            dismissButton = { TextButton({ deleting = null }) { Text("取消") } },
+        )
+    }
+}
+
+/** 把选中的字体文件复制进 [dir]；读不出字形的文件不要，返回存下的文件名或 null。 */
+private fun importFont(ctx: android.content.Context, uri: android.net.Uri, dir: java.io.File): String? {
+    val raw = ctx.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c -> if (c.moveToFirst()) c.getString(0) else null } ?: "font.ttf"
+    val name = raw.replace(Regex("[/\\\\:*?\"<>|]"), "_").let { if (it.contains('.')) it else "$it.ttf" }
+    dir.mkdirs()
+    val tmp = java.io.File(dir, ".$name.tmp")
+    runCatching { ctx.contentResolver.openInputStream(uri)?.use { input -> tmp.outputStream().use { input.copyTo(it) } } }.getOrNull() ?: return null
+    val ok = runCatching { android.graphics.Typeface.Builder(tmp).build() }.getOrNull()?.let { it != android.graphics.Typeface.DEFAULT } == true
+    if (!ok) { tmp.delete(); return null }
+    val out = java.io.File(dir, name)
+    out.delete()
+    return if (tmp.renameTo(out)) name else { tmp.delete(); null }
 }
 
 /** What the reader is told before the offline voice is turned on: it costs data, storage and memory. */

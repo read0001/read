@@ -1,8 +1,8 @@
 {
-  "versionCode": 17,
-  "versionName": "1.0.16",
-  "notes": "书源页可以搜索书源（名称、分组、网址），按分组和状态筛选，长按多选后批量启用、停用、固定、检测、删除。换源面板误关后不用重新搜：搜索在后台继续，10 分钟内再打开直接看到结果，也可以点“重新搜索”；固定的书源排在最前，长按可设为固定或停用。搜索页新增“精准搜索”，只看书名或作者包含关键字的结果；同一本书优先用固定的书源打开，结果会显示来自哪些书源。",
-  "url": "https://raw.githubusercontent.com/read0001/read/main/releases/openread-1.0.16.apk",
-  "size": 3326382,
-  "sha256": "33ac166349006fc684eeb620db235d7c7f1f53ceb1bd89af760e739aea69f7fc"
+  "versionCode": 18,
+  "versionName": "1.0.17",
+  "notes": "阅读：段间距、边距、缩进、字体（可导入）、繁简转换，翻页动画（平移/覆盖/无），音量键翻页，自动翻页，长按复制分享，书签，缓存整本或后面全部。听书：定时关闭、耳机和蓝牙按键、来电自动暂停、拔耳机暂停。屏蔽词/替换规则。书架排序和分组，导入本地 TXT / EPUB，Wi-Fi 下更新提醒，阅读统计，备份与恢复。",
+  "url": "https://raw.githubusercontent.com/read0001/read/main/releases/openread-1.0.17.apk",
+  "size": 3424686,
+  "sha256": "1071769fac268383afc9bc519d32197952cf1518436a1447d9e7e8d96f714dfe"
 }

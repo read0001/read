@@ -44,6 +44,8 @@ private object Route {
     const val SEARCH = "search?q={q}"
     const val DETAIL = "detail/{url}"
     const val READER = "reader/{url}?index={index}"
+    const val RULES = "rules"
+    const val STATS = "stats"
     fun detail(url: String) = "detail/${Uri.encode(url)}"
     fun reader(url: String, index: Int? = null) = "reader/${Uri.encode(url)}" + (index?.let { "?index=$it" } ?: "")
     fun search(q: String? = null) = "search" + (q?.let { "?q=${Uri.encode(it)}" } ?: "")
@@ -62,8 +64,12 @@ fun AppNav(pendingSearch: String? = null, onSearchHandled: () -> Unit = {}) {
                 onDetail = { nav.navigate(Route.detail(it.bookUrl)) },
                 onSearch = { nav.navigate(Route.search()) },
                 onOpenHit = { Handoff.search = it; Handoff.alternates = emptyList(); nav.navigate(Route.detail(it.bookUrl)) },
+                onRules = { nav.navigate(Route.RULES) },
+                onStats = { nav.navigate(Route.STATS) },
             )
         }
+        composable(Route.RULES) { app.openread.ui.settings.RulesScreen(onBack = { nav.popBackStack() }) }
+        composable(Route.STATS) { app.openread.ui.settings.StatsScreen(onBack = { nav.popBackStack() }) }
         composable(Route.SEARCH, arguments = listOf(navArgument("q") { type = NavType.StringType; nullable = true; defaultValue = null })) { e ->
             SearchScreen(e.arguments?.getString("q"), onBack = { nav.popBackStack() }, onOpen = { hit, others -> Handoff.search = hit; Handoff.alternates = others; nav.navigate(Route.detail(hit.bookUrl)) })
         }
@@ -100,6 +106,8 @@ private fun MainTabs(
     onDetail: (app.openread.data.BookRow) -> Unit,
     onSearch: () -> Unit,
     onOpenHit: (app.openread.engine.SearchBook) -> Unit,
+    onRules: () -> Unit,
+    onStats: () -> Unit,
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     val context = LocalContext.current
@@ -128,7 +136,7 @@ private fun MainTabs(
                 0 -> ShelfScreen(onOpen = onOpen, onDetail = onDetail, onSearch = onSearch, onExplore = { tab = 1 })
                 1 -> ExploreScreen(onOpen = onOpenHit)
                 2 -> SourcesScreen()
-                else -> SettingsScreen()
+                else -> SettingsScreen(onRules = onRules, onStats = onStats)
             }
         }
     }

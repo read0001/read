@@ -29,6 +29,15 @@ enum class ReaderPalette(val label: String, val bg: Long, val fg: Long) {
 
 enum class PageMode(val label: String) { Slide("左右翻页"), Scroll("上下滚动") }
 
+/** 翻页动画：平移（默认）、覆盖（上一页盖在下一页上滑走）、无。 */
+enum class PageAnim(val label: String) { Slide("平移"), Cover("覆盖"), None("无") }
+
+/** 繁简转换：显示和朗读的正文都按这个转换（需要 Android 10 及以上）。 */
+enum class ChineseConvert(val label: String) { None("不转换"), ToTraditional("简→繁"), ToSimplified("繁→简") }
+
+/** 书架排序。 */
+enum class ShelfSort(val label: String) { Recent("最近阅读"), Updated("最近更新"), Added("加入时间"), Name("书名") }
+
 /** 搜索页搜哪些书源：全部启用的、只搜固定的、或自选的。 */
 enum class SearchScope(val label: String) { All("全部书源"), Pinned("固定的书源"), Custom("自选书源") }
 
@@ -61,6 +70,23 @@ data class Settings(
     val lastSubscriptionUpdate: Long = 0,
     val ignoredVersion: Int = 0,
     val lastUpdateCheck: Long = 0,
+    /** 音量键翻页（听书时不翻页，音量键照常调音量）。 */
+    val volumeKeys: Boolean = true,
+    /** 正文左右边距（dp）。 */
+    val sideMargin: Int = 22,
+    /** 段间距，以字号为单位（0 = 不额外留空）。 */
+    val paragraphGap: Float = 0f,
+    /** 段首缩进两个字。 */
+    val indent: Boolean = true,
+    /** 正文字体：空 = 系统默认，"serif" / "mono"，其余是导入的字体文件名（filesDir/fonts/ 下）。 */
+    val readerFont: String = "",
+    val chineseConvert: ChineseConvert = ChineseConvert.None,
+    val pageAnim: PageAnim = PageAnim.Slide,
+    /** 自动翻页：左右翻页时每页停留的秒数；上下滚动时滚过一屏的秒数。 */
+    val autoPageSeconds: Int = 12,
+    val shelfSort: ShelfSort = ShelfSort.Recent,
+    /** 后台（Wi-Fi 下）检查书架更新，有新章节时发通知。 */
+    val notifyUpdates: Boolean = true,
 ) {
     companion object {
         val DEFAULT_BASE = "https://raw.githubusercontent.com/${BuildConfig.SUBSCRIPTION_REPO}/${BuildConfig.SUBSCRIPTION_BRANCH}/booksource-check/out/"
@@ -89,6 +115,16 @@ class Prefs(private val context: Context) {
         val updated = longPreferencesKey("sub_updated")
         val ignored = intPreferencesKey("ignored_version")
         val checked = longPreferencesKey("update_checked")
+        val volumeKeys = booleanPreferencesKey("volume_keys")
+        val margin = intPreferencesKey("side_margin")
+        val gap = floatPreferencesKey("paragraph_gap")
+        val indent = booleanPreferencesKey("indent")
+        val readerFont = stringPreferencesKey("reader_font")
+        val convert = intPreferencesKey("chinese_convert")
+        val anim = intPreferencesKey("page_anim")
+        val autoPage = intPreferencesKey("auto_page_seconds")
+        val shelfSort = intPreferencesKey("shelf_sort")
+        val notifyUpdates = booleanPreferencesKey("notify_updates")
     }
 
     private fun decode(p: Preferences): Settings {
@@ -116,6 +152,16 @@ class Prefs(private val context: Context) {
             lastSubscriptionUpdate = p[K.updated] ?: 0,
             ignoredVersion = p[K.ignored] ?: 0,
             lastUpdateCheck = p[K.checked] ?: 0,
+            volumeKeys = p[K.volumeKeys] ?: d.volumeKeys,
+            sideMargin = p[K.margin] ?: d.sideMargin,
+            paragraphGap = p[K.gap] ?: d.paragraphGap,
+            indent = p[K.indent] ?: d.indent,
+            readerFont = p[K.readerFont] ?: d.readerFont,
+            chineseConvert = ChineseConvert.entries.getOrElse(p[K.convert] ?: 0) { d.chineseConvert },
+            pageAnim = PageAnim.entries.getOrElse(p[K.anim] ?: 0) { d.pageAnim },
+            autoPageSeconds = p[K.autoPage] ?: d.autoPageSeconds,
+            shelfSort = ShelfSort.entries.getOrElse(p[K.shelfSort] ?: 0) { d.shelfSort },
+            notifyUpdates = p[K.notifyUpdates] ?: d.notifyUpdates,
         )
     }
 
@@ -131,6 +177,50 @@ class Prefs(private val context: Context) {
         context.store.edit { p: androidx.datastore.preferences.core.MutablePreferences ->
             p[K.searchSources] = change(p[K.searchSources] ?: emptySet())
             if (pick) p[K.searchScope] = SearchScope.Custom.ordinal
+        }
+    }
+
+    /** 备份用：所有设置的原始键值（带类型），不含订阅更新时间、检查更新这类本机状态。 */
+    suspend fun exportRaw(): kotlinx.serialization.json.JsonObject {
+        val skip = setOf(K.updated.name, K.checked.name, K.ignored.name)
+        val map = context.store.data.first().asMap()
+        return kotlinx.serialization.json.buildJsonObject {
+            for ((k, v) in map) {
+                if (k.name in skip) continue
+                val (t, value) = when (v) {
+                    is Boolean -> "b" to kotlinx.serialization.json.JsonPrimitive(v)
+                    is Int -> "i" to kotlinx.serialization.json.JsonPrimitive(v)
+                    is Long -> "l" to kotlinx.serialization.json.JsonPrimitive(v)
+                    is Float -> "f" to kotlinx.serialization.json.JsonPrimitive(v)
+                    is String -> "s" to kotlinx.serialization.json.JsonPrimitive(v)
+                    is Set<*> -> "ss" to kotlinx.serialization.json.JsonArray(v.map { kotlinx.serialization.json.JsonPrimitive(it.toString()) })
+                    else -> continue
+                }
+                put(k.name, kotlinx.serialization.json.buildJsonObject { put("t", kotlinx.serialization.json.JsonPrimitive(t)); put("v", value) })
+            }
+        }
+    }
+
+    /** 恢复 [exportRaw] 导出的设置；认不出的键跳过。 */
+    suspend fun importRaw(o: kotlinx.serialization.json.JsonObject) {
+        context.store.edit { p: androidx.datastore.preferences.core.MutablePreferences ->
+            for ((name, e) in o) {
+                val obj = e as? kotlinx.serialization.json.JsonObject ?: continue
+                val t = (obj["t"] as? kotlinx.serialization.json.JsonPrimitive)?.content ?: continue
+                val v = obj["v"] ?: continue
+                val prim = v as? kotlinx.serialization.json.JsonPrimitive
+                runCatching {
+                    when (t) {
+                        "b" -> p[booleanPreferencesKey(name)] = prim!!.content.toBooleanStrict()
+                        "i" -> p[intPreferencesKey(name)] = prim!!.content.toInt()
+                        "l" -> p[longPreferencesKey(name)] = prim!!.content.toLong()
+                        "f" -> p[floatPreferencesKey(name)] = prim!!.content.toFloat()
+                        "s" -> p[stringPreferencesKey(name)] = prim!!.content
+                        "ss" -> p[androidx.datastore.preferences.core.stringSetPreferencesKey(name)] =
+                            (v as kotlinx.serialization.json.JsonArray).map { (it as kotlinx.serialization.json.JsonPrimitive).content }.toSet()
+                    }
+                }
+            }
         }
     }
 
@@ -158,6 +248,16 @@ class Prefs(private val context: Context) {
             p[K.updated] = next.lastSubscriptionUpdate
             p[K.ignored] = next.ignoredVersion
             p[K.checked] = next.lastUpdateCheck
+            p[K.volumeKeys] = next.volumeKeys
+            p[K.margin] = next.sideMargin
+            p[K.gap] = next.paragraphGap
+            p[K.indent] = next.indent
+            p[K.readerFont] = next.readerFont
+            p[K.convert] = next.chineseConvert.ordinal
+            p[K.anim] = next.pageAnim.ordinal
+            p[K.autoPage] = next.autoPageSeconds
+            p[K.shelfSort] = next.shelfSort.ordinal
+            p[K.notifyUpdates] = next.notifyUpdates
         }
     }
 }

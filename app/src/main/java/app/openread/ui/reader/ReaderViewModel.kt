@@ -23,6 +23,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.sync.withPermit
+import app.openread.data.BookmarkRow
+import app.openread.data.isLocal
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -45,6 +52,12 @@ data class ReaderState(
     val busy: Boolean = false,
     /** Set when checking the sources found a clearly better one: the reader is asked whether to move there. */
     val offer: SwitchOffer? = null,
+    /** 每次主动跳转（目录、书签、进度条、上下章按钮）加一：阅读页据此把画面移到 [position]，哪怕还在同一章。 */
+    val jump: Int = 0,
+    /** 正在缓存：已处理几章、共几章；没在缓存时为 null。 */
+    val caching: Pair<Int, Int>? = null,
+    /** 这本书已缓存的章数（打开缓存面板时统计，-1 = 还没统计）。 */
+    val cached: Int = -1,
 )
 
 class ReaderViewModel(private val c: AppContainer, bookUrl: String, private val startIndex: Int?) : ViewModel() {
@@ -63,7 +76,33 @@ class ReaderViewModel(private val c: AppContainer, bookUrl: String, private val 
     private var saveJob: Job? = null
     private var triedAutoSwitch = false
 
+    /** 当前这本书的书签（换源后书的地址会变，跟着换）。 */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val bookmarks: StateFlow<List<BookmarkRow>> = _state.map { it.book?.bookUrl }.distinctUntilChanged()
+        .flatMapLatest { url -> if (url == null) emptyFlow() else c.library.bookmarks(url) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     init {
+        // 替换规则或繁简转换改了：已经加载的章节重新取一遍（缓存在磁盘上的是原文，不用重新下载）
+        // 旧正文先留着，新的到了再换，页面不会先塌成转圈；所有已加载的章节都换（滚动模式里上面的章也是）
+        viewModelScope.launch {
+            c.library.filter.version.drop(1).collect {
+                val s = _state.value
+                val row = s.book ?: return@collect
+                if (!s.loaded) return@collect
+                val gen = generation
+                for (k in texts.keys.toList()) {
+                    val ch = s.chapters.getOrNull(k) ?: continue
+                    if (texts[k] !is ChapterText.Ready || ch.isVolume) continue
+                    viewModelScope.launch {
+                        runCatching { c.library.text(row, ch) }.onSuccess { if (gen == generation && texts[k] is ChapterText.Ready) texts[k] = ChapterText.Ready(it) }
+                    }
+                }
+                // 正在听这本书：从正在读的句子重新开始，听到的也换成新的文字
+                val ra = ReadAloud.state.value
+                if (ra.active && ra.playing && ra.bookUrl == row.bookUrl) ra.span?.let { ReadAloud.seek(ra.chapterIndex, it.paragraph, it.from) }
+            }
+        }
         viewModelScope.launch {
             val row = c.library.book(bookUrl)
             if (row == null) { _state.value = ReaderState(loaded = true, error = "这本书不在书架上"); return@launch }
@@ -109,9 +148,9 @@ class ReaderViewModel(private val c: AppContainer, bookUrl: String, private val 
      * Jumps to a chapter. With [Int.MAX_VALUE] the position is left as "end of chapter" until the pager lands on the
      * last page and reports the real offset; anything else is remembered straight away.
      */
-    fun go(index: Int, offset: Int = 0) {
+    fun go(index: Int, offset: Int = 0, jump: Boolean = false) {
         val i = index.coerceIn(0, _state.value.chapters.lastIndex.coerceAtLeast(0))
-        _state.update { it.copy(position = Position(i, offset)) }
+        _state.update { it.copy(position = Position(i, offset), jump = if (jump) it.jump + 1 else it.jump) }
         prefetch(i)
         if (offset != Int.MAX_VALUE) record(i, offset)
     }
@@ -120,6 +159,7 @@ class ReaderViewModel(private val c: AppContainer, bookUrl: String, private val 
     fun record(index: Int, offset: Int) {
         val s = _state.value
         if (!s.loaded || s.chapters.isEmpty()) return
+        tick()
         val title = s.chapters.getOrNull(index)?.title
         _state.update { it.copy(position = Position(index, offset)) }
         val url = currentUrl
@@ -142,6 +182,54 @@ class ReaderViewModel(private val c: AppContainer, bookUrl: String, private val 
     }
 
     fun reload(idx: Int) = ensure(idx, force = true)
+
+    /** 章节名的显示形式（繁简转换）。 */
+    fun title(t: String) = c.library.title(t)
+
+    // ---- 阅读时长：页面在前台、两次翻页间隔不到 5 分钟，这段时间才算在读；听书时不算 ----
+
+    private var resumedAt = 0L
+    private var lastTick = 0L
+
+    fun onResume() { resumedAt = System.currentTimeMillis(); lastTick = resumedAt }
+
+    fun onPause() { tick(); resumedAt = 0L }
+
+    private fun tick() {
+        if (resumedAt == 0L) return
+        val now = System.currentTimeMillis()
+        val gap = now - lastTick
+        lastTick = now
+        if (gap !in 1..5 * 60_000L) return // 放着没动超过 5 分钟：这段不算
+        val ms = gap
+        val name = _state.value.book?.name ?: return
+        val ra = ReadAloud.state.value
+        if (ra.active && ra.playing && ra.bookUrl == _state.value.book?.bookUrl) return // 听书时页面跟着翻，不算阅读
+        if (ms >= 1000) c.appScope.launch { c.library.addReadTime(name, ms) }
+    }
+
+    // ---- 书签 ----
+
+    /** 在当前看到的位置加书签；摘录取那一段开头的几十个字。 */
+    fun addBookmark() {
+        val s = _state.value
+        val book = s.book ?: return
+        val ch = s.chapters.getOrNull(s.position.index) ?: return
+        val v = visible?.takeIf { it.index == s.position.index }
+        val text = (texts[s.position.index] as? ChapterText.Ready)?.text
+        val paragraphs = text?.let { ReadAloud.paragraphs(title(ch.title), it) }
+        val excerpt = if (paragraphs != null && v != null) paragraphs.getOrNull(v.paragraph)?.drop(v.char)?.take(60).orEmpty() else ""
+        val offset = if (paragraphs != null && v != null) Paginator.paragraphStarts(paragraphs).getOrElse(v.paragraph) { 0 } + v.char
+        else s.position.offset.takeIf { it != Int.MAX_VALUE } ?: 0
+        viewModelScope.launch {
+            c.library.addBookmark(BookmarkRow(bookUrl = book.bookUrl, chapterIndex = s.position.index, chapterTitle = ch.title, offset = offset, excerpt = excerpt.ifBlank { ch.title }, createdAt = System.currentTimeMillis()))
+            _state.update { it.copy(message = "已添加书签") }
+        }
+    }
+
+    fun deleteBookmark(id: Long) { viewModelScope.launch { c.library.deleteBookmark(id) } }
+
+    fun openBookmark(b: BookmarkRow) = go(b.chapterIndex, b.offset, jump = true)
 
     /** The first text on screen: character [char] of paragraph [paragraph] of chapter [index]. */
     class Visible(val index: Int, val paragraph: Int, val char: Int)
@@ -175,20 +263,61 @@ class ReaderViewModel(private val c: AppContainer, bookUrl: String, private val 
         viewModelScope.launch { c.prefs.update(block) }
     }
 
-    /** Downloads the next [count] chapters in the background so the book can be read offline. */
-    fun cacheAhead(count: Int = 50) {
+    private var cacheJob: Job? = null
+
+    /** 统计这本书已经缓存了几章（缓存面板打开时）。 */
+    fun countCached() {
         val s = _state.value
         val row = s.book ?: return
-        val from = s.position.index
-        viewModelScope.launch {
-            _state.update { it.copy(message = "开始缓存后面 $count 章") }
+        viewModelScope.launch { _state.update { it.copy(cached = c.library.cachedCount(row, s.chapters)) } }
+    }
+
+    /**
+     * 在后台下载章节，好离线读：[from] 起的 [count] 章（null = 到最后一章）。已经缓存的跳过；一章失败不影响后面的。
+     */
+    fun cache(from: Int, count: Int?) {
+        val s = _state.value
+        val row = s.book ?: return
+        if (cacheJob?.isActive == true) return
+        val range = from.coerceAtLeast(0)..minOf(if (count == null) s.chapters.lastIndex else from + count - 1, s.chapters.lastIndex)
+        if (range.isEmpty()) return
+        cacheJob = viewModelScope.launch {
             var ok = 0
-            for (i in from..minOf(from + count, s.chapters.lastIndex)) {
-                val ch = s.chapters[i]
-                if (ch.isVolume || c.library.isCached(row.bookUrl, ch)) { ok++; continue }
-                runCatching { c.library.text(row, ch) }.onSuccess { ok++ }
+            var failed = 0
+            val total = range.count()
+            _state.update { it.copy(caching = 0 to total) }
+            try {
+                val gate = kotlinx.coroutines.sync.Semaphore(3)
+                kotlinx.coroutines.coroutineScope {
+                    for (i in range) {
+                        val ch = s.chapters[i]
+                        launch {
+                            gate.withPermit {
+                                if (ch.isVolume || c.library.isCached(row.bookUrl, ch)) ok++
+                                else runCatching { c.library.download(row, ch) }.onSuccess { ok++ }.onFailure { failed++ }
+                                _state.update { it.copy(caching = (ok + failed) to total) }
+                            }
+                        }
+                    }
+                }
+                _state.update { it.copy(message = "已缓存 $ok 章" + if (failed > 0) "，$failed 章下载失败" else "") }
+            } finally {
+                _state.update { it.copy(caching = null) }
+                countCached()
             }
-            _state.update { it.copy(message = "已缓存 $ok 章") }
+        }
+    }
+
+    fun cancelCache() { cacheJob?.cancel() }
+
+    /** 删掉这本书缓存的正文；正在看的几章重新下载。 */
+    fun clearCache() {
+        val row = _state.value.book ?: return
+        cacheJob?.cancel()
+        viewModelScope.launch {
+            c.library.clearCache(row)
+            _state.update { it.copy(message = "已删除本书缓存") }
+            countCached()
         }
     }
 
@@ -206,6 +335,7 @@ class ReaderViewModel(private val c: AppContainer, bookUrl: String, private val 
             runCatching { c.library.switchTo(row, target) }
                 .onSuccess { fresh ->
                     generation++
+                    cacheJob?.cancel() // 缓存任务拿的是旧书的目录，换源后停掉
                     currentUrl = fresh.bookUrl
                     val chapters = c.library.chapters(fresh.bookUrl)
                     texts.clear()
@@ -278,7 +408,7 @@ class ReaderViewModel(private val c: AppContainer, bookUrl: String, private val 
 
     /** A chapter would not load: once per reading session, quietly look for the same book elsewhere. */
     private fun autoSwitch() {
-        if (_state.value.book?.sourcePinned == true) return // 书源被固定了：读不出来也不自动换
+        if (_state.value.book?.sourcePinned == true || _state.value.book?.isLocal == true) return // 书源被固定了（或是本地书）：读不出来也不自动换
         if (triedAutoSwitch || !settings.value.autoSwitchSource) return
         triedAutoSwitch = true
         val row = _state.value.book ?: return
