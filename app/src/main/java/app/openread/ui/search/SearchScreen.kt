@@ -21,6 +21,7 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.AssistChip
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -145,6 +146,8 @@ class SearchViewModel(private val c: AppContainer) : ViewModel() {
                 SearchScope.Custom -> enabled.filter { it.key in s.searchSources }
             }
             _state.value = SearchState(k, searching = rows.isNotEmpty(), total = rows.size, started = true)
+            // 同一本书在几个书源里都有时，固定的书源排前面（点开默认用它），其余按最新章节新旧
+            val pinned = rows.filter { it.pinned }.map { it.key }.toSet()
             val index = LinkedHashMap<String, BookGroup>()
             var answered = 0
             c.engine.search(k, rows).collect { progress ->
@@ -155,11 +158,13 @@ class SearchViewModel(private val c: AppContainer) : ViewModel() {
                 for (h in hits) index.getOrPut(h.name + "\u0000" + h.author) { BookGroup(h.name, h.author, mutableListOf()) }.hits.add(h)
                 // exact title matches first, then by how many sources have the book
                 val sorted = index.values.sortedWith(compareByDescending<BookGroup> { it.name == k }.thenByDescending { it.name.contains(k) }.thenByDescending { it.hits.size })
-                _state.update { it.copy(groups = sorted.map { g -> BookGroup(g.name, g.author, Freshness.newestFirst(g.hits).toMutableList()) }, answered = answered) }
+                _state.update { it.copy(groups = sorted.map { g -> BookGroup(g.name, g.author, Freshness.newestFirst(g.hits).sortedByDescending { it.origin in pinned }.toMutableList()) }, answered = answered) }
             }
             _state.update { it.copy(searching = false) }
         }
     }
+
+    fun setPrecise(on: Boolean) { viewModelScope.launch { c.prefs.update { it.copy(preciseSearch = on) } } }
 
     fun clearHistory() { viewModelScope.launch { c.db.history().clear() } }
 }
@@ -209,18 +214,33 @@ fun SearchScreen(initial: String?, onBack: () -> Unit, onOpen: (SearchBook, List
                 SearchScope.Pinned -> "固定的书源（${enabledSources.count { it.pinned }}）"
                 SearchScope.Custom -> "自选 ${enabledSources.count { it.key in settings.searchSources }} 个"
             }
-            AssistChip(
-                onClick = { vm.scopeOpened(); showScope = true },
-                label = { Text("搜索源：$scopeLabel") },
-                leadingIcon = { Icon(Icons.Outlined.FilterList, null) },
-                modifier = Modifier.padding(horizontal = 12.dp),
-            )
+            Row(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AssistChip(
+                    onClick = { vm.scopeOpened(); showScope = true },
+                    label = { Text("搜索源：$scopeLabel") },
+                    leadingIcon = { Icon(Icons.Outlined.FilterList, null) },
+                )
+                FilterChip(settings.preciseSearch, { vm.setPrecise(!settings.preciseSearch) }, label = { Text("精准搜索") })
+            }
+            // 精准搜索：只显示书名或作者包含关键字的（不用重搜，切换立即生效）
+            val shown = if (settings.preciseSearch) state.groups.filter { it.name.contains(state.keyword, true) || it.author.contains(state.keyword, true) } else state.groups
+            val hiddenByPrecise = state.groups.size - shown.size
             if (state.searching) LinearProgressIndicator(
                 progress = { if (state.total == 0) 0f else state.answered.toFloat() / state.total },
                 modifier = Modifier.fillMaxWidth(),
             )
+            // 放在列表外面：插进带 key 的列表顶部的话，列表会停在原来那一项上，提示被挤到看不见的地方
+            if (state.started && !state.searching && hiddenByPrecise > 0 && shown.isNotEmpty()) Text(
+                "精准搜索隐藏了 $hiddenByPrecise 本书名和作者都不含「${state.keyword}」的结果",
+                style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
             when {
                 !state.started -> HistoryList(history.map { it.keyword }, onPick = { text = it; vm.search(it) }, onClear = vm::clearHistory)
+                shown.isEmpty() && hiddenByPrecise > 0 && !state.searching -> EmptyState(
+                    "没有书名或作者包含「${state.keyword}」的结果",
+                    "精准搜索隐藏了 $hiddenByPrecise 个不相干的结果，点上面的“精准搜索”关掉就能看到",
+                )
                 state.groups.isEmpty() && !state.searching -> EmptyState(
                     "没有找到「${state.keyword}」",
                     when {
@@ -232,12 +252,14 @@ fun SearchScreen(initial: String?, onBack: () -> Unit, onOpen: (SearchBook, List
                 else -> LazyColumn(Modifier.fillMaxSize()) {
                     if (state.searching) item {
                         Text(
-                            "已搜 ${state.answered}/${state.total} 个书源，找到 ${state.groups.size} 本" + if (state.rested > 0) "（先跳过 ${state.rested} 个最近总出错的）" else "",
+                            "已搜 ${state.answered}/${state.total} 个书源，找到 ${shown.size} 本" +
+                                (if (hiddenByPrecise > 0) "（精准搜索隐藏了 $hiddenByPrecise 本）" else "") +
+                                (if (state.rested > 0) "（先跳过 ${state.rested} 个最近总出错的）" else ""),
                             style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                         )
                     }
-                    items(state.groups, key = { it.name + "\u0000" + it.author }) { g -> ResultRow(g) { onOpen(g.first, g.hits.drop(1)) } }
+                    items(shown, key = { it.name + "\u0000" + it.author }) { g -> ResultRow(g) { onOpen(g.first, g.hits.drop(1)) } }
                 }
             }
         }
@@ -279,7 +301,7 @@ private fun ResultRow(g: BookGroup, onClick: () -> Unit) {
             g.first.latestChapterTitle?.let {
                 Text("最新：$it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            Box(Modifier.padding(top = 6.dp)) { AssistChip(onClick = onClick, label = { Text("${g.hits.size} 个书源") }) }
+            Box(Modifier.padding(top = 6.dp)) { AssistChip(onClick = onClick, label = { Text(if (g.hits.size == 1) g.first.originName else "${g.first.originName} 等 ${g.hits.size} 个书源", maxLines = 1, overflow = TextOverflow.Ellipsis) }) }
         }
     }
     HorizontalDivider(Modifier.padding(start = 94.dp))

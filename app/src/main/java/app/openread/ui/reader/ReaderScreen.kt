@@ -58,6 +58,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -110,9 +111,13 @@ import app.openread.ui.components.DataAskDialog
 import app.openread.ui.components.PinSourceRow
 import app.openread.ui.components.SourceNameFilter
 import app.openread.ui.components.SwitchOfferDialog
-import app.openread.ui.components.filterByName
+import app.openread.ui.components.AltSourceItem
+import app.openread.ui.components.arrange
+import app.openread.ui.components.rememberAltSourceActions
+import app.openread.ui.components.rememberPinnedSources
 import app.openread.ui.components.factory
 import app.openread.ui.detail.TocSheet
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
@@ -661,14 +666,14 @@ private fun MenuButton(icon: androidx.compose.ui.graphics.vector.ImageVector, la
 @Composable
 private fun SwitchSheet(vm: ReaderViewModel, onDismiss: () -> Unit) {
     // Sources answer one by one; each is listed as soon as it has, instead of after the slowest one.
-    var list by remember { mutableStateOf<List<SearchBook>>(emptyList()) }
-    var searching by remember { mutableStateOf(true) }
+    // 搜索在面板外面跑：误关了再打开，已经找到的立即显示，没搜完的接着搜
+    var search by remember { mutableStateOf(vm.pickerSearch()) }
+    val list by remember(search) { search?.list ?: MutableStateFlow(emptyList<SearchBook>()) }.collectAsState()
+    val searching by remember(search) { search?.running ?: MutableStateFlow(false) }.collectAsState()
     var query by remember { mutableStateOf("") }
     val pinned by remember(vm) { vm.state.map { it.book?.sourcePinned == true }.distinctUntilChanged() }.collectAsState(false)
-    LaunchedEffect(Unit) {
-        runCatching { vm.alternatives().collect { list = it } }
-        searching = false
-    }
+    val pinnedSources = rememberPinnedSources()
+    val actions = rememberAltSourceActions()
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("换源", style = MaterialTheme.typography.titleMedium)
@@ -676,23 +681,30 @@ private fun SwitchSheet(vm: ReaderViewModel, onDismiss: () -> Unit) {
                 CircularProgressIndicator(Modifier.padding(start = 12.dp).size(16.dp), strokeWidth = 2.dp)
                 Text("继续搜索，已找到 ${list.size} 个", Modifier.padding(start = 8.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            if (!searching) {
+                Spacer(Modifier.weight(1f))
+                TextButton({ search = vm.pickerSearch(refresh = true) }) { Text("重新搜索") }
+            }
         }
         PinSourceRow(pinned, vm::togglePin)
         if (list.isNotEmpty()) SourceNameFilter(query) { query = it }
-        val shown = list.filterByName(query)
+        val shown = list.arrange(query, pinnedSources, actions.hidden)
         if (list.isEmpty() && searching) Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         else if (list.isEmpty()) Text("其他书源里没有找到这本书", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
         else if (shown.isEmpty()) Text(
-            if (searching) "已找到的书源里没有名称包含「${query.trim()}」的，还在继续搜索…" else "没有名称包含「${query.trim()}」的书源",
+            when {
+                query.isBlank() -> if (searching) "还在继续搜索…" else "找到的书源都停用了"
+                searching -> "已找到的书源里没有名称包含「${query.trim()}」的，还在继续搜索…"
+                else -> "没有名称包含「${query.trim()}」的书源"
+            },
             Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         else Column(Modifier.verticalScroll(rememberScrollState())) {
             shown.forEach { a ->
-                ListItem(
-                    headlineContent = { Text(a.originName) },
-                    supportingContent = { Text(a.latestChapterTitle?.let { "最新：$it" } ?: a.bookUrl, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    modifier = Modifier.pointerInput(a) { detectTapGestures { vm.switchTo(a, others = list); onDismiss() } },
-                )
+                // 按书源绑定：搜索途中列表会重排，长按菜单要跟着它的书源走，不能停在原来的位置上
+                androidx.compose.runtime.key(a.origin) {
+                    AltSourceItem(a, a.origin in pinnedSources, onClick = { vm.switchTo(a, others = list); onDismiss() }, actions = actions)
+                }
             }
         }
     }

@@ -72,7 +72,10 @@ import app.openread.ui.components.DataAskDialog
 import app.openread.ui.components.PinSourceRow
 import app.openread.ui.components.SourceNameFilter
 import app.openread.ui.components.SwitchOfferDialog
-import app.openread.ui.components.filterByName
+import app.openread.ui.components.AltSourceItem
+import app.openread.ui.components.arrange
+import app.openread.ui.components.rememberAltSourceActions
+import app.openread.ui.components.rememberPinnedSources
 import app.openread.ui.components.factory
 import app.openread.ui.nav.Handoff
 import kotlinx.coroutines.Job
@@ -81,6 +84,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withPermit
@@ -239,16 +243,22 @@ class DetailViewModel(private val c: AppContainer, private val bookUrl: String) 
 
     private var findJob: Job? = null
 
-    fun findAlternatives() {
+    /**
+     * 打开换源面板。搜索本身在 Library 里跑，关掉面板只是不再看它：误关了再打开，已找到的立即显示，没搜完的接着搜。
+     * [refresh] 为 true 时丢掉上次的结果重新搜。
+     */
+    fun findAlternatives(refresh: Boolean = false) {
         val b = _state.value.book ?: return
         findJob?.cancel()
         findJob = viewModelScope.launch {
             _state.update { it.copy(finding = true, alternatives = emptyList()) }
             val row = c.library.book(b.bookUrl) ?: b.toRowForSearch()
+            val search = c.library.pickerSearch(row, refresh)
             // The list fills as sources answer; the sheet shows each one at once instead of waiting for the slowest.
             // A list that arrives after the sheet was closed (or a source was picked) must not open it again.
-            runCatching { c.library.alternativesFlow(row).collect { alts -> _state.update { if (it.alternatives == null) it else it.copy(alternatives = alts) } } }
-            _state.update { it.copy(finding = false) }
+            combine(search.list, search.running) { l, r -> l to r }.collect { (alts, running) ->
+                _state.update { if (it.alternatives == null) it else it.copy(alternatives = alts, finding = running) }
+            }
         }
     }
 
@@ -437,13 +447,22 @@ fun DetailScreen(bookUrl: String, onBack: () -> Unit, onRead: (String, Int?) -> 
 
     s.alternatives?.let { alts ->
         ModalBottomSheet(onDismissRequest = vm::dismissAlternatives) {
-            Text("换源", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+            Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("换源", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f).padding(vertical = 8.dp))
+                if (!s.finding) TextButton({ vm.findAlternatives(refresh = true) }) { Text("重新搜索") }
+            }
             if (s.inShelf) PinSourceRow(s.sourcePinned, vm::togglePin)
             var query by remember { mutableStateOf("") }
             if (alts.isNotEmpty()) SourceNameFilter(query) { query = it }
-            val shown = alts.filterByName(query)
+            val pinnedSources = rememberPinnedSources()
+            val actions = rememberAltSourceActions()
+            val shown = alts.arrange(query, pinnedSources, actions.hidden)
             if (alts.isNotEmpty() && shown.isEmpty()) Text(
-                if (s.finding) "已找到的书源里没有名称包含「${query.trim()}」的，还在继续搜索…" else "没有名称包含「${query.trim()}」的书源",
+                when {
+                query.isBlank() -> if (s.finding) "还在继续搜索…" else "找到的书源都停用了"
+                s.finding -> "已找到的书源里没有名称包含「${query.trim()}」的，还在继续搜索…"
+                else -> "没有名称包含「${query.trim()}」的书源"
+            },
                 Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (s.finding) {
@@ -453,13 +472,13 @@ fun DetailScreen(bookUrl: String, onBack: () -> Unit, onRead: (String, Int?) -> 
                 }
             }
             else if (alts.isEmpty()) Text("其他书源里没有找到这本书", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            LazyColumn {
+            // 带 key 的列表重排时会停在原来那一项上：刚固定的、或者后搜到的固定书源排到了最前面，
+            // 要滚回顶部才看得到（用户已经往下翻了就不打扰）
+            val altState = rememberLazyListState()
+            LaunchedEffect(shown.firstOrNull()?.origin) { if (altState.firstVisibleItemIndex <= 1) altState.scrollToItem(0) }
+            LazyColumn(state = altState) {
                 items(shown, key = { it.origin }) { a ->
-                    ListItem(
-                        headlineContent = { Text(a.originName) },
-                        supportingContent = { Text(a.latestChapterTitle?.let { "最新：$it" } ?: a.bookUrl, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        modifier = Modifier.clickable { vm.switchTo(a) },
-                    )
+                    AltSourceItem(a, a.origin in pinnedSources, onClick = { vm.switchTo(a) }, actions = actions)
                 }
             }
         }

@@ -195,7 +195,8 @@ class ReaderViewModel(private val c: AppContainer, bookUrl: String, private val 
     // ---- changing source -----------------------------------------------------------------------------------------
 
     /** Other sources with this book, for the manual picker; the list grows as sources answer. */
-    fun alternatives(): Flow<List<SearchBook>> = _state.value.book?.let { c.library.alternativesFlow(it) } ?: emptyFlow()
+    /** 换源面板的搜索：关掉面板不会中断，再打开复用（见 Library.pickerSearch）。 */
+    fun pickerSearch(refresh: Boolean = false) = _state.value.book?.let { c.library.pickerSearch(it, refresh) }
 
     /** [others] are the sources the picker found; once moved, the new source is checked against them (see [checkLatest]). */
     fun switchTo(target: SearchBook, auto: Boolean = false, others: List<SearchBook> = emptyList()) {

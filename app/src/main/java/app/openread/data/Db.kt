@@ -35,6 +35,9 @@ data class SourceRow(
 /** 书源的简要信息（不含规则 JSON）。 */
 data class SourceBrief(val key: String, val name: String, val group: String?, val pinned: Boolean)
 
+/** 书源的分组名：一个源可以属于几个分组，用中英文逗号或分号隔开。 */
+fun splitGroups(group: String?): List<String> = group.orEmpty().split(',', ';', '，', '；').map { it.trim() }.filter { it.isNotEmpty() }
+
 @Entity(tableName = "books")
 data class BookRow(
     @PrimaryKey val bookUrl: String,
@@ -128,6 +131,16 @@ interface SourceDao {
 
     @Query("UPDATE sources SET enabled = :enabled WHERE `key` = :key")
     suspend fun setEnabled(key: String, enabled: Boolean)
+
+    // 批量操作：一条语句改完，列表只刷新一次
+    @Query("UPDATE sources SET enabled = :enabled WHERE `key` IN (:keys)")
+    suspend fun setEnabledMany(keys: List<String>, enabled: Boolean)
+
+    @Query("UPDATE sources SET pinned = :pinned WHERE `key` IN (:keys)")
+    suspend fun setPinnedMany(keys: List<String>, pinned: Boolean)
+
+    @Query("DELETE FROM sources WHERE `key` IN (:keys)")
+    suspend fun deleteMany(keys: List<String>)
 
     @Query("UPDATE sources SET checkedAt = :at, checkOk = :ok, checkMs = :ms, checkMsg = :msg WHERE `key` = :key")
     suspend fun setCheck(key: String, at: Long, ok: Boolean, ms: Long, msg: String?)

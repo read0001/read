@@ -15,7 +15,13 @@ import app.openread.engine.ProbeResult
 import app.openread.engine.RuleData
 import app.openread.engine.SearchBook
 import app.openread.engine.WebBook
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -23,6 +29,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.lastOrNull
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
@@ -40,6 +47,8 @@ import java.util.concurrent.ConcurrentHashMap
 class SourceRepo(private val dao: SourceDao) {
     val all: Flow<List<SourceRow>> = dao.all()
     val enabledBrief: Flow<List<SourceBrief>> = dao.enabledBrief()
+    /** 启用且固定的书源 key：换源面板、搜索结果用来把固定的源排前面。 */
+    val pinnedKeys: Flow<Set<String>> = dao.enabledBrief().map { l -> l.filter { it.pinned }.map { it.key }.toSet() }
     private val parsed = ConcurrentHashMap<String, Pair<Int, BookSource?>>()
 
     fun parse(row: SourceRow): BookSource? {
@@ -56,6 +65,10 @@ class SourceRepo(private val dao: SourceDao) {
     suspend fun setEnabled(key: String, enabled: Boolean) = dao.setEnabled(key, enabled)
     suspend fun setPinned(key: String, pinned: Boolean) = dao.setPinned(key, pinned)
     suspend fun delete(key: String) = dao.delete(key)
+    // SQLite 一条语句的参数有上限（老版本 999），分批执行
+    suspend fun setEnabled(keys: Collection<String>, enabled: Boolean) = keys.chunked(500).forEach { dao.setEnabledMany(it, enabled) }
+    suspend fun setPinned(keys: Collection<String>, pinned: Boolean) = keys.chunked(500).forEach { dao.setPinnedMany(it, pinned) }
+    suspend fun delete(keys: Collection<String>) = keys.chunked(500).forEach { dao.deleteMany(it) }
 
     private fun row(src: BookSource, subscribed: Boolean, order: Int, pinned: Boolean = false) =
         SourceRow(src.key, src.bookSourceName, src.bookSourceGroup, src.toJson(), src.enabled, subscribed, order, pinned = pinned)
@@ -473,6 +486,50 @@ class Library(private val context: Context, private val db: AppDb, private val e
                 found.add(hit)
                 emit(Freshness.newestFirst(found))
             }
+        }
+    }
+
+    /** 换源面板的一次搜索：已找到的书源（随搜随增）和是否还在搜。 */
+    class PickerSearch(val startedAt: Long) {
+        internal val found = MutableStateFlow<List<SearchBook>>(emptyList())
+        internal val active = MutableStateFlow(true)
+        val list: StateFlow<List<SearchBook>> = found
+        val running: StateFlow<Boolean> = active
+        internal var job: Job? = null
+        /** 搜索途中被停用的书源：之后才搜到的结果也不要（alternativesFlow 每次发的是累计的整张表）。 */
+        internal val forgotten: MutableSet<String> = java.util.Collections.newSetFromMap(ConcurrentHashMap())
+    }
+
+    // 换源面板的搜索不跟着面板走：关掉面板搜索照样跑完，过一会儿再打开直接看到结果，不用重新拉取
+    private val pickerScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val pickerCache = LinkedHashMap<String, PickerSearch>()
+
+    /**
+     * 换源面板用的搜索。同一本书（书名、作者、当前书源都相同）10 分钟内再打开，直接复用上次的（还没搜完的接着搜）；
+     * [refresh] 为 true 时丢掉旧的重新搜。只留最近几本书的结果。
+     */
+    fun pickerSearch(row: BookRow, refresh: Boolean = false): PickerSearch = synchronized(pickerCache) {
+        val key = row.name + "\u0000" + row.author + "\u0000" + row.origin
+        val old = pickerCache[key]
+        val fresh = old != null && (old.running.value || System.currentTimeMillis() - old.startedAt < 10 * 60_000)
+        if (old != null && fresh && !refresh) return old
+        old?.job?.cancel()
+        val search = PickerSearch(System.currentTimeMillis())
+        search.job = pickerScope.launch {
+            try { alternativesFlow(row).collect { l -> search.found.value = l.filter { it.origin !in search.forgotten } } } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e }
+            finally { search.active.value = false }
+        }
+        pickerCache.remove(key)
+        pickerCache[key] = search
+        while (pickerCache.size > 4) pickerCache.remove(pickerCache.keys.first())?.job?.cancel()
+        search
+    }
+
+    /** 某个书源被停用了：换源面板缓存的结果里也去掉它。 */
+    fun forgetSource(key: String) = synchronized(pickerCache) {
+        pickerCache.values.forEach { s ->
+            s.forgotten.add(key)
+            s.found.update { l -> l.filter { it.origin != key } }
         }
     }
 

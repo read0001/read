@@ -33,9 +33,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.openread.data.SearchScope
 import app.openread.data.SourceBrief
+import app.openread.data.splitGroups
 
-/** 书源的分组名（一个源可以属于几个分组，用逗号或分号隔开）。 */
-private fun SourceBrief.groups(): List<String> = group.orEmpty().split(',', ';', '，', '；').map { it.trim() }.filter { it.isNotEmpty() }
+private fun SourceBrief.groups(): List<String> = splitGroups(group)
 
 /**
  * 搜索页的“搜索源”选择：全部启用的书源、只搜固定的、或自选（可按分组、按名称筛选）。
@@ -75,9 +75,13 @@ private fun ScopeRow(on: Boolean, title: String, hint: String, onClick: () -> Un
 @Composable
 private fun CustomPicker(sources: List<SourceBrief>, selected: Set<String>, onEdit: (keys: Collection<String>, add: Boolean) -> Unit) {
     var query by remember { mutableStateOf("") }
-    val shown = sources.filter { query.isBlank() || it.name.contains(query.trim(), ignoreCase = true) }
+    val q = query.trim()
+    // 名称筛选也匹配分组名：输入“精品”能同时筛出名字或分组里带“精品”的书源
+    val shown = sources.filter { q.isEmpty() || it.name.contains(q, ignoreCase = true) || it.group.orEmpty().contains(q, ignoreCase = true) }
     val allGroups = remember(sources) { sources.flatMap { r -> r.groups().map { it to r.key } }.groupBy({ it.first }, { it.second }).toSortedMap().entries.toList() }
-    val groups = allGroups.take(16)
+    // 分组太多时只列前 16 个；输入了筛选词，就列出名字匹配的分组
+    val matched = if (q.isEmpty()) allGroups else allGroups.filter { it.key.contains(q, ignoreCase = true) }
+    val groups = matched.take(16)
 
     if (groups.isNotEmpty()) FlowRow(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         groups.forEach { (name, keys) ->
@@ -86,13 +90,13 @@ private fun CustomPicker(sources: List<SourceBrief>, selected: Set<String>, onEd
             FilterChip(all, { onEdit(keys, !all) }, label = { Text("$name（${keys.size}）") })
         }
     }
-    if (allGroups.size > groups.size) Text(
-        "还有 ${allGroups.size - groups.size} 个分组没有列出，可以用下面的名称筛选",
+    if (matched.size > groups.size) Text(
+        "还有 ${matched.size - groups.size} 个分组没有列出，可以在下面输入分组名筛选",
         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
     )
     OutlinedTextField(
-        query, { query = it }, singleLine = true, label = { Text("按书源名称筛选") },
+        query, { query = it }, singleLine = true, label = { Text("按书源名称或分组筛选") },
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
     )
     Row(Modifier.padding(horizontal = 8.dp)) {

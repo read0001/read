@@ -55,6 +55,8 @@ data class Settings(
     /** 搜索范围，以及“自选书源”时选了哪些（书源的 key）。 */
     val searchScope: SearchScope = SearchScope.All,
     val searchSources: Set<String> = emptySet(),
+    /** 精准搜索：只显示书名或作者包含关键字的结果（书源的模糊匹配常带回不相干的书）。 */
+    val preciseSearch: Boolean = false,
     val subscriptionBase: String = DEFAULT_BASE,
     val lastSubscriptionUpdate: Long = 0,
     val ignoredVersion: Int = 0,
@@ -82,6 +84,7 @@ class Prefs(private val context: Context) {
         val ttsOffline = booleanPreferencesKey("tts_offline")
         val searchScope = intPreferencesKey("search_scope")
         val searchSources = androidx.datastore.preferences.core.stringSetPreferencesKey("search_sources")
+        val precise = booleanPreferencesKey("search_precise")
         val base = stringPreferencesKey("sub_base")
         val updated = longPreferencesKey("sub_updated")
         val ignored = intPreferencesKey("ignored_version")
@@ -108,6 +111,7 @@ class Prefs(private val context: Context) {
             offlineVoice = p[K.ttsOffline] ?: d.offlineVoice,
             searchScope = SearchScope.entries.getOrElse(p[K.searchScope] ?: 0) { d.searchScope },
             searchSources = p[K.searchSources] ?: d.searchSources,
+            preciseSearch = p[K.precise] ?: d.preciseSearch,
             subscriptionBase = p[K.base] ?: d.subscriptionBase,
             lastSubscriptionUpdate = p[K.updated] ?: 0,
             ignoredVersion = p[K.ignored] ?: 0,
@@ -149,6 +153,7 @@ class Prefs(private val context: Context) {
             p[K.ttsOffline] = next.offlineVoice
             p[K.searchScope] = next.searchScope.ordinal
             p[K.searchSources] = next.searchSources
+            p[K.precise] = next.preciseSearch
             p[K.base] = next.subscriptionBase
             p[K.updated] = next.lastSubscriptionUpdate
             p[K.ignored] = next.ignoredVersion

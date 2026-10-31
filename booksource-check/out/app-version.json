@@ -1,8 +1,8 @@
 {
-  "versionCode": 16,
-  "versionName": "1.0.15",
-  "notes": "新增“搜索源”：搜索页可选搜全部书源、只搜固定的、或自选书源（可按分组、名称筛选），选择会记住。书源和书籍都可以“固定”：固定的书源排最前、搜索优先、不会被订阅更新删除；固定了书源的书不再自动换源、不再推荐换源。手动添加的书源默认固定，“导入”改名“添加书源”。换源面板加了“固定当前书源”和按书源名称搜索。",
-  "url": "https://raw.githubusercontent.com/read0001/read/main/releases/openread-1.0.15.apk",
-  "size": 3293614,
-  "sha256": "4c079dace9b7198173222102e22f056512f2ae87acbe2ebcd0dfc1fe4c370bfa"
+  "versionCode": 17,
+  "versionName": "1.0.16",
+  "notes": "书源页可以搜索书源（名称、分组、网址），按分组和状态筛选，长按多选后批量启用、停用、固定、检测、删除。换源面板误关后不用重新搜：搜索在后台继续，10 分钟内再打开直接看到结果，也可以点“重新搜索”；固定的书源排在最前，长按可设为固定或停用。搜索页新增“精准搜索”，只看书名或作者包含关键字的结果；同一本书优先用固定的书源打开，结果会显示来自哪些书源。",
+  "url": "https://raw.githubusercontent.com/read0001/read/main/releases/openread-1.0.16.apk",
+  "size": 3326382,
+  "sha256": "33ac166349006fc684eeb620db235d7c7f1f53ceb1bd89af760e739aea69f7fc"
 }
