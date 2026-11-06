@@ -58,6 +58,8 @@ data class ReaderState(
     val caching: Pair<Int, Int>? = null,
     /** 这本书已缓存的章数（打开缓存面板时统计，-1 = 还没统计）。 */
     val cached: Int = -1,
+    /** 用目录、进度条跳走之前的位置：菜单里给一个“回到原处”，点了跳回来。 */
+    val back: Position? = null,
 )
 
 class ReaderViewModel(private val c: AppContainer, bookUrl: String, private val startIndex: Int?) : ViewModel() {
@@ -148,9 +150,13 @@ class ReaderViewModel(private val c: AppContainer, bookUrl: String, private val 
      * Jumps to a chapter. With [Int.MAX_VALUE] the position is left as "end of chapter" until the pager lands on the
      * last page and reports the real offset; anything else is remembered straight away.
      */
-    fun go(index: Int, offset: Int = 0, jump: Boolean = false) {
+    fun go(index: Int, offset: Int = 0, jump: Boolean = false, keepBack: Boolean = false) {
         val i = index.coerceIn(0, _state.value.chapters.lastIndex.coerceAtLeast(0))
-        _state.update { it.copy(position = Position(i, offset), jump = if (jump) it.jump + 1 else it.jump) }
+        _state.update {
+            // 只记第一次跳走前的位置：连着拖几次进度条，“回到原处”还是回到最开始看的地方
+            val back = if (keepBack) (it.back ?: it.position.takeIf { p -> p.index != i }) else it.back
+            it.copy(position = Position(i, offset), jump = if (jump) it.jump + 1 else it.jump, back = back)
+        }
         prefetch(i)
         if (offset != Int.MAX_VALUE) record(i, offset)
     }
@@ -225,6 +231,32 @@ class ReaderViewModel(private val c: AppContainer, bookUrl: String, private val 
             c.library.addBookmark(BookmarkRow(bookUrl = book.bookUrl, chapterIndex = s.position.index, chapterTitle = ch.title, offset = offset, excerpt = excerpt.ifBlank { ch.title }, createdAt = System.currentTimeMillis()))
             _state.update { it.copy(message = "已添加书签") }
         }
+    }
+
+    /** 回到用目录、进度条跳走之前的位置。 */
+    fun jumpBack() {
+        val b = _state.value.back ?: return
+        _state.update { it.copy(back = null) }
+        go(b.index, b.offset, jump = true)
+    }
+
+    fun dropBack() = _state.update { it.copy(back = null) }
+
+    /** 菜单上的书签按钮：当前这一页（[from] until [to]）已有书签就删掉，没有就加一个。 */
+    fun toggleBookmark(from: Int, to: Int) {
+        val idx = _state.value.position.index
+        val here = bookmarks.value.filter { it.chapterIndex == idx && it.offset in from until to }
+        if (here.isEmpty()) addBookmark()
+        else viewModelScope.launch {
+            here.forEach { c.library.deleteBookmark(it.id) }
+            _state.update { it.copy(message = "已删除书签") }
+        }
+    }
+
+    /** 日间 / 夜间切换：切到夜间前记住当前背景，切回来用它。 */
+    fun toggleNight() = updateSettings {
+        if (it.palette.dark) it.copy(palette = it.dayPalette.takeIf { p -> !p.dark } ?: app.openread.data.ReaderPalette.Paper)
+        else it.copy(dayPalette = it.palette, palette = app.openread.data.ReaderPalette.Night)
     }
 
     fun deleteBookmark(id: Long) { viewModelScope.launch { c.library.deleteBookmark(id) } }
@@ -340,7 +372,7 @@ class ReaderViewModel(private val c: AppContainer, bookUrl: String, private val 
                     val chapters = c.library.chapters(fresh.bookUrl)
                     texts.clear()
                     val p = Position(fresh.chapterIndex, fresh.chapterOffset)
-                    _state.update { it.copy(book = fresh, chapters = chapters, position = p, busy = false, message = (if (auto) "已自动换源到 " else "已换到 ") + target.originName) }
+                    _state.update { it.copy(book = fresh, chapters = chapters, position = p, back = null, busy = false, message = (if (auto) "已自动换源到 " else "已换到 ") + target.originName) }
                     prefetch(p.index)
                     // 固定了书源的书，换源后不再核对最新章、不再推荐别的书源。
                     if (!fresh.sourcePinned) checkLatest(target, fresh.bookUrl, others.filter { it.origin != target.origin })

@@ -9,12 +9,18 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.BrightnessHigh
+import androidx.compose.material.icons.outlined.BrightnessLow
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
@@ -61,39 +67,60 @@ import app.openread.tts.ReadAloud
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsSheet(settings: Settings, update: ((Settings) -> Settings) -> Unit, onDismiss: () -> Unit) {
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-        Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    // 面板半透明的背后能看到正文，调字号、背景时直接看效果；常用的（亮度、字号、背景）放最上面
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), scrimColor = Color.Transparent) {
+        // 只占屏幕下面六成，上面露出正文；更多设置在面板里往下滑
+        Column(Modifier.fillMaxHeight(0.6f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.BrightnessLow, "亮度", Modifier.padding(end = 8.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Slider(
+                    value = if (settings.brightness < 0) 0.5f else settings.brightness,
+                    onValueChange = { v -> update { it.copy(brightness = v.coerceIn(0.02f, 1f)) } },
+                    enabled = settings.brightness >= 0, modifier = Modifier.weight(1f),
+                )
+                Icon(Icons.Outlined.BrightnessHigh, null, Modifier.padding(start = 8.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                FilterChip(
+                    selected = settings.brightness < 0, onClick = { update { it.copy(brightness = if (it.brightness < 0) 0.5f else -1f) } },
+                    label = { Text("跟随系统") }, modifier = Modifier.padding(start = 8.dp),
+                )
+            }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text("字号", Modifier.padding(end = 16.dp))
-                FilledTonalIconButton(onClick = { update { it.copy(fontSize = (it.fontSize - 1).coerceAtLeast(12)) } }) { Text("A-") }
-                Text("${settings.fontSize}", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                FilledTonalIconButton(onClick = { update { it.copy(fontSize = (it.fontSize + 1).coerceAtMost(36)) } }) { Text("A+") }
+                FilledTonalIconButton(onClick = { update { it.copy(fontSize = (it.fontSize - 1).coerceAtLeast(12)) } }, enabled = settings.fontSize > 12) { Text("A-", style = MaterialTheme.typography.labelMedium) }
+                Slider(
+                    value = settings.fontSize.toFloat(), onValueChange = { v -> update { it.copy(fontSize = v.roundToInt()) } },
+                    valueRange = 12f..36f, modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+                )
+                FilledTonalIconButton(onClick = { update { it.copy(fontSize = (it.fontSize + 1).coerceAtMost(36)) } }, enabled = settings.fontSize < 36) { Text("A+", style = MaterialTheme.typography.titleSmall) }
+                Text("${settings.fontSize}", Modifier.padding(start = 8.dp).widthIn(min = 24.dp), style = MaterialTheme.typography.titleMedium)
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("行距", Modifier.padding(end = 16.dp))
-                listOf(1.4f, 1.7f, 2.0f, 2.3f).forEach { v ->
-                    FilterChip(selected = settings.lineSpacing == v, onClick = { update { it.copy(lineSpacing = v) } }, label = { Text("%.1f".format(v)) }, modifier = Modifier.padding(end = 8.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                ReaderPalette.entries.forEach { p ->
+                    val picked = settings.palette == p
+                    val ring by androidx.compose.animation.core.animateDpAsState(if (picked) 3.dp else 1.dp, label = "ring")
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(
+                            Modifier.size(44.dp).clip(CircleShape).background(Color(p.bg))
+                                .border(BorderStroke(ring, if (picked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant), CircleShape)
+                                .clickable { update { it.copy(palette = p, dayPalette = if (p.dark) it.dayPalette else p) } },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            if (picked) Icon(Icons.Outlined.Check, null, tint = Color(p.fg), modifier = Modifier.size(20.dp))
+                            else Text("文", color = Color(p.fg), style = MaterialTheme.typography.labelLarge)
+                        }
+                        Text(p.label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+                    }
                 }
             }
+
+            Section("排版")
+            ChipRow("行距", listOf(1.4f to "紧", 1.7f to "适中", 2.0f to "松", 2.3f to "很松"), settings.lineSpacing) { v -> update { it.copy(lineSpacing = v) } }
             ChipRow("段距", listOf(0f to "无", 0.3f to "小", 0.6f to "中", 1f to "大"), settings.paragraphGap) { v -> update { it.copy(paragraphGap = v) } }
             ChipRow("边距", listOf(12 to "窄", 22 to "中", 32 to "宽", 44 to "很宽"), settings.sideMargin) { v -> update { it.copy(sideMargin = v) } }
             FontRow(settings, update)
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("段首缩进两字", Modifier.weight(1f))
-                Switch(settings.indent, { v -> update { it.copy(indent = v) } })
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("背景", Modifier.padding(end = 16.dp))
-                ReaderPalette.entries.forEach { p ->
-                    val picked = settings.palette == p
-                    Box(
-                        Modifier.padding(end = 12.dp).size(38.dp).clip(CircleShape).background(Color(p.bg))
-                            .border(BorderStroke(if (picked) 3.dp else 1.dp, if (picked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline), CircleShape)
-                            .clickable { update { it.copy(palette = p) } },
-                        contentAlignment = Alignment.Center,
-                    ) { Text("文", color = Color(p.fg), style = MaterialTheme.typography.labelLarge) }
-                }
-            }
+            SwitchRow("段首缩进两字", null, settings.indent) { v -> update { it.copy(indent = v) } }
+
+            Section("翻页")
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                 PageMode.entries.forEachIndexed { i, m ->
                     SegmentedButton(
@@ -105,45 +132,29 @@ fun SettingsSheet(settings: Settings, update: ((Settings) -> Settings) -> Unit, 
             if (settings.pageMode == PageMode.Slide) {
                 ChipRow("动画", PageAnim.entries.map { it to it.label }, settings.pageAnim) { v -> update { it.copy(pageAnim = v) } }
             }
+            SwitchRow("单手模式", if (settings.pageMode == PageMode.Slide) "点屏幕左侧也翻到下一页" else "点屏幕上方也往下翻", settings.tapAllNext) { v -> update { it.copy(tapAllNext = v) } }
+            SwitchRow("音量键翻页", "听书时音量键照常调音量", settings.volumeKeys) { v -> update { it.copy(volumeKeys = v) } }
+            SwitchRow("页眉页脚", "显示章节名、时间、电量和阅读进度", settings.readerInfo) { v -> update { it.copy(readerInfo = v) } }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("自动翻页", Modifier.padding(end = 16.dp))
                 Slider(
                     value = settings.autoPageSeconds.toFloat(), onValueChange = { v -> update { it.copy(autoPageSeconds = v.roundToInt()) } },
                     valueRange = 3f..60f, modifier = Modifier.weight(1f),
                 )
-                Text(if (settings.pageMode == PageMode.Slide) "${settings.autoPageSeconds} 秒/页" else "${settings.autoPageSeconds} 秒/屏")
+                Text(if (settings.pageMode == PageMode.Slide) "${settings.autoPageSeconds} 秒/页" else "${settings.autoPageSeconds} 秒/屏", Modifier.padding(start = 8.dp))
             }
-            Column {
-                ChipRow("繁简", ChineseConvert.entries.map { it to it.label }, settings.chineseConvert, enabled = ContentFilter.convertSupported) { v -> update { it.copy(chineseConvert = v) } }
-                if (!ContentFilter.convertSupported) Text("繁简转换需要 Android 10 及以上", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("音量键翻页")
-                    Text("听书时音量键照常调音量", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Switch(settings.volumeKeys, { v -> update { it.copy(volumeKeys = v) } })
-            }
+
+            Section("听书")
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("亮度", Modifier.padding(end = 16.dp))
-                Slider(
-                    value = if (settings.brightness < 0) 0.5f else settings.brightness,
-                    onValueChange = { v -> update { it.copy(brightness = v.coerceIn(0.02f, 1f)) } },
-                    enabled = settings.brightness >= 0, modifier = Modifier.weight(1f),
-                )
-                Checkbox(checked = settings.brightness < 0, onCheckedChange = { sys -> update { it.copy(brightness = if (sys) -1f else 0.5f) } })
-                Text("系统")
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("听书语速", Modifier.padding(end = 16.dp))
+                Text("语速", Modifier.padding(end = 16.dp))
                 Slider(
                     value = settings.readAloudRate,
                     onValueChange = { v -> update { it.copy(readAloudRate = (v / ReadAloud.RATE_STEP).roundToInt() * ReadAloud.RATE_STEP) } },
                     valueRange = ReadAloud.MIN_RATE..ReadAloud.MAX_RATE, steps = ((ReadAloud.MAX_RATE - ReadAloud.MIN_RATE) / ReadAloud.RATE_STEP).roundToInt() - 1, modifier = Modifier.weight(1f),
                 )
-                Text("%.2f×".format(settings.readAloudRate))
+                Text("%.2f×".format(settings.readAloudRate), Modifier.padding(start = 8.dp))
             }
-            Text("听书引擎")
+            Text("引擎")
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                 val engines = VoiceEngine.entries.filter { it != VoiceEngine.Offline || settings.offlineVoice }
                 engines.forEachIndexed { i, e ->
@@ -163,11 +174,33 @@ fun SettingsSheet(settings: Settings, update: ((Settings) -> Settings) -> Unit, 
                 )
             }
             OfflineVoiceRow(settings, update)
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("保持亮屏", Modifier.weight(1f))
-                Switch(settings.keepScreenOn, { v -> update { it.copy(keepScreenOn = v) } })
+
+            Section("其他")
+            Column {
+                ChipRow("繁简", ChineseConvert.entries.map { it to it.label }, settings.chineseConvert, enabled = ContentFilter.convertSupported) { v -> update { it.copy(chineseConvert = v) } }
+                if (!ContentFilter.convertSupported) Text("繁简转换需要 Android 10 及以上", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            SwitchRow("保持亮屏", null, settings.keepScreenOn) { v -> update { it.copy(keepScreenOn = v) } }
+            TextButton(onClick = { update { it.copy(tapGuideShown = false) }; onDismiss() }) { Text("再看一次点击区域说明") }
         }
+    }
+}
+
+/** 设置分组的小标题。 */
+@Composable
+private fun Section(title: String) {
+    Text(title, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 6.dp))
+}
+
+/** 一行开关：名称、可选的说明、右边的开关。 */
+@Composable
+private fun SwitchRow(title: String, hint: String?, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().clickable { onChange(!checked) }, verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(title)
+            if (hint != null) Text(hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Switch(checked, onChange)
     }
 }
 

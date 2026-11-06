@@ -24,7 +24,10 @@ enum class ReaderPalette(val label: String, val bg: Long, val fg: Long) {
     Parchment("羊皮纸", 0xFFF1E4C8, 0xFF3B2F1E),
     Green("护眼", 0xFFD7E8D3, 0xFF22301F),
     Grey("灰", 0xFF3A3D40, 0xFFC9CCCF),
-    Night("夜间", 0xFF0F1113, 0xFF9AA0A6),
+    Night("夜间", 0xFF0F1113, 0xFF9AA0A6);
+
+    /** 深色背景：菜单、面板跟着用深色。 */
+    val dark: Boolean get() = this == Grey || this == Night
 }
 
 enum class PageMode(val label: String) { Slide("左右翻页"), Scroll("上下滚动") }
@@ -87,6 +90,16 @@ data class Settings(
     val shelfSort: ShelfSort = ShelfSort.Recent,
     /** 后台（Wi-Fi 下）检查书架更新，有新章节时发通知。 */
     val notifyUpdates: Boolean = true,
+    /** 夜间模式切回日间时用的背景。 */
+    val dayPalette: ReaderPalette = ReaderPalette.Paper,
+    /** 单手模式：点屏幕左侧也翻到下一页（滚动模式里点上方也往下滚）。 */
+    val tapAllNext: Boolean = false,
+    /** 页眉页脚：章节名、时间、电量、进度。 */
+    val readerInfo: Boolean = true,
+    /** 书架用列表（否则是封面网格）。 */
+    val shelfList: Boolean = false,
+    /** 第一次打开阅读页时的点击区域提示，看过就不再显示。 */
+    val tapGuideShown: Boolean = false,
 ) {
     companion object {
         val DEFAULT_BASE = "https://raw.githubusercontent.com/${BuildConfig.SUBSCRIPTION_REPO}/${BuildConfig.SUBSCRIPTION_BRANCH}/booksource-check/out/"
@@ -125,6 +138,11 @@ class Prefs(private val context: Context) {
         val autoPage = intPreferencesKey("auto_page_seconds")
         val shelfSort = intPreferencesKey("shelf_sort")
         val notifyUpdates = booleanPreferencesKey("notify_updates")
+        val dayPalette = intPreferencesKey("day_palette")
+        val tapAllNext = booleanPreferencesKey("tap_all_next")
+        val readerInfo = booleanPreferencesKey("reader_info")
+        val shelfList = booleanPreferencesKey("shelf_list")
+        val tapGuide = booleanPreferencesKey("tap_guide_shown")
     }
 
     private fun decode(p: Preferences): Settings {
@@ -162,6 +180,11 @@ class Prefs(private val context: Context) {
             autoPageSeconds = p[K.autoPage] ?: d.autoPageSeconds,
             shelfSort = ShelfSort.entries.getOrElse(p[K.shelfSort] ?: 0) { d.shelfSort },
             notifyUpdates = p[K.notifyUpdates] ?: d.notifyUpdates,
+            dayPalette = ReaderPalette.entries.getOrElse(p[K.dayPalette] ?: 0) { d.dayPalette },
+            tapAllNext = p[K.tapAllNext] ?: d.tapAllNext,
+            readerInfo = p[K.readerInfo] ?: d.readerInfo,
+            shelfList = p[K.shelfList] ?: d.shelfList,
+            tapGuideShown = p[K.tapGuide] ?: d.tapGuideShown,
         )
     }
 
@@ -258,6 +281,11 @@ class Prefs(private val context: Context) {
             p[K.autoPage] = next.autoPageSeconds
             p[K.shelfSort] = next.shelfSort.ordinal
             p[K.notifyUpdates] = next.notifyUpdates
+            p[K.dayPalette] = next.dayPalette.ordinal
+            p[K.tapAllNext] = next.tapAllNext
+            p[K.readerInfo] = next.readerInfo
+            p[K.shelfList] = next.shelfList
+            p[K.tapGuide] = next.tapGuideShown
         }
     }
 }

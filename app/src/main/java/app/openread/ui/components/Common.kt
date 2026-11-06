@@ -52,6 +52,14 @@ fun BookCover(url: String?, title: String, modifier: Modifier = Modifier) {
             loading = { fallback() }, error = { fallback() },
             success = { SubcomposeAsyncImageContent() },
         )
+        // 左边一道书脊的明暗，封面看起来像一本书
+        Box(
+            Modifier.fillMaxSize().background(
+                androidx.compose.ui.graphics.Brush.horizontalGradient(
+                    0f to Color.Black.copy(alpha = 0.16f), 0.04f to Color.White.copy(alpha = 0.10f), 0.08f to Color.Transparent,
+                ),
+            ),
+        )
     }
 }
 

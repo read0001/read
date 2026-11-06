@@ -112,10 +112,23 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.Bookmarks
+import androidx.compose.material.icons.automirrored.outlined.Undo
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Headphones
+import androidx.compose.material.icons.outlined.SkipNext
+import androidx.compose.material.icons.outlined.SkipPrevious
+import androidx.compose.material.icons.outlined.TextFields
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.SlowMotionVideo
 import androidx.compose.material.icons.outlined.StopCircle
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
 import app.openread.engine.SearchBook
@@ -199,6 +212,25 @@ fun ReaderScreen(bookUrl: String, startIndex: Int?, onBack: () -> Unit) {
         onDispose { lifecycleOwner.lifecycle.removeObserver(obs); vm.onPause() }
     }
 
+    // 当前这一页（滚动模式是这一屏）在本章显示文字里的范围：书签按钮据此判断这里有没有书签
+    var pageSpan by remember { mutableStateOf(PageSpan(-1, 0 until 0)) }
+    val marks by vm.bookmarks.collectAsState()
+    // 范围属于别的章（比如翻进了还没加载的一章）时当作这里没有书签：只会新加，不会删到看不见的书签
+    val spanHere = pageSpan.takeIf { it.chapter == s.position.index }
+    val marked = spanHere != null && marks.any { it.chapterIndex == spanHere.chapter && it.offset in spanHere.range }
+    // 直接读存储：vm.settings 一开始是默认值，用它会让看过提示的人也闪一下
+    val guide by remember { ctx.container.prefs.flow.map { !it.tapGuideShown }.distinctUntilChanged() }.collectAsState(false)
+    val clock = rememberReaderClock()
+    val dark = palette.dark
+    val onTap: (TapZone) -> Unit = { z ->
+        when (z) {
+            TapZone.Menu -> menu = !menu
+            TapZone.Prev -> if (settings.tapAllNext) turner.next?.invoke() else turner.prev?.invoke()
+            TapZone.Next -> turner.next?.invoke()
+        }
+    }
+
+    androidx.compose.runtime.CompositionLocalProvider(LocalReaderClock provides clock) {
     Box(Modifier.fillMaxSize().background(bg)) {
         when {
             !s.loaded -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = fg)
@@ -207,47 +239,95 @@ fun ReaderScreen(bookUrl: String, startIndex: Int?, onBack: () -> Unit) {
                 TextButton(onClick = onBack) { Text("返回") }
             }
             else -> {
-                if (settings.pageMode == PageMode.Slide) SlideReader(vm, s, look, fg, ra, turner, autoRun, settings.autoPageSeconds, onToggleMenu = { menu = !menu }, onLongPress = { selection = it })
-                else ScrollReader(vm, s, look, fg, ra, turner, autoRun, settings.autoPageSeconds, onToggleMenu = { menu = !menu }, onLongPress = { selection = it })
+                val info = settings.readerInfo
+                if (settings.pageMode == PageMode.Slide) SlideReader(vm, s, look, fg, ra, turner, autoRun, settings.autoPageSeconds, info, marks, onTap = onTap, onPage = { pageSpan = it }, onLongPress = { selection = it })
+                else ScrollReader(vm, s, look, fg, ra, turner, autoRun, settings.autoPageSeconds, info, marked, onTap = onTap, onPage = { pageSpan = it }, onLongPress = { selection = it })
             }
         }
 
-        AnimatedVisibility(menu, Modifier.align(Alignment.TopCenter), enter = fadeIn() + slideInVertically { -it }, exit = fadeOut() + slideOutVertically { -it }) {
-            TopAppBar(
-                title = { Text(s.book?.name.orEmpty(), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "返回") } },
-                actions = {
-                    IconButton(onClick = { showBookmarks = true }) { Icon(Icons.Outlined.BookmarkBorder, "书签") }
-                    IconButton(onClick = { vm.reload(s.position.index) }) { Icon(Icons.Outlined.Refresh, "重新加载本章") }
-                    if (!isLocal) IconButton(onClick = { showSwitch = true }) { Icon(Icons.Outlined.SwapHoriz, "换源") }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-            )
+        ReaderMenuTheme(dark) {
+            // 菜单出来时正文稍微压暗，菜单和正文分得开
+            AnimatedVisibility(menu, Modifier.fillMaxSize(), enter = fadeIn(), exit = fadeOut()) {
+                Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.12f)).pointerInput(Unit) { detectTapGestures { menu = false } })
+            }
+            AnimatedVisibility(menu, Modifier.align(Alignment.TopCenter), enter = fadeIn() + slideInVertically { -it }, exit = fadeOut() + slideOutVertically { -it }) {
+                var more by remember { mutableStateOf(false) }
+                TopAppBar(
+                    title = {
+                        Column {
+                            Text(s.book?.name.orEmpty(), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium)
+                            val sub = if (isLocal) "本地书" else s.book?.originName.orEmpty()
+                            if (sub.isNotEmpty()) Text(sub, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    },
+                    navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "返回") } },
+                    actions = {
+                        IconButton(onClick = { if (spanHere == null) vm.addBookmark() else vm.toggleBookmark(spanHere.range.first, spanHere.range.last + 1) }) {
+                            if (marked) Icon(Icons.Filled.Bookmark, "删除这里的书签", tint = MaterialTheme.colorScheme.primary)
+                            else Icon(Icons.Outlined.BookmarkBorder, "在这里加书签")
+                        }
+                        if (!isLocal) IconButton(onClick = { showSwitch = true }) { Icon(Icons.Outlined.SwapHoriz, "换源") }
+                        Box {
+                            IconButton(onClick = { more = true }) { Icon(Icons.Outlined.MoreVert, "更多") }
+                            androidx.compose.material3.DropdownMenu(expanded = more, onDismissRequest = { more = false }) {
+                                androidx.compose.material3.DropdownMenuItem(text = { Text("重新加载本章") }, leadingIcon = { Icon(Icons.Outlined.Refresh, null) }, onClick = { more = false; vm.reload(s.position.index) })
+                                if (!isLocal) androidx.compose.material3.DropdownMenuItem(text = { Text("缓存章节") }, leadingIcon = { Icon(Icons.Outlined.Download, null) }, onClick = { more = false; showCache = true })
+                                androidx.compose.material3.DropdownMenuItem(
+                                    text = { Text(if (autoPage) "停止自动翻页" else "自动翻页") },
+                                    leadingIcon = { Icon(if (autoPage) Icons.Outlined.StopCircle else Icons.Outlined.SlowMotionVideo, null) },
+                                    onClick = { more = false; autoPage = !autoPage; if (autoPage) menu = false },
+                                )
+                            }
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                )
+            }
+            AnimatedVisibility(menu, Modifier.align(Alignment.BottomCenter), enter = fadeIn() + slideInVertically { it }, exit = fadeOut() + slideOutVertically { it }) {
+                BottomMenu(
+                    s, vm, listening = ra.playing, session = listening, rate = settings.readAloudRate, dark = dark,
+                    onRate = { r -> vm.updateSettings { it.copy(readAloudRate = (r.coerceIn(ReadAloud.MIN_RATE, ReadAloud.MAX_RATE) / ReadAloud.RATE_STEP).roundToInt() * ReadAloud.RATE_STEP) } },
+                    onToc = { showToc = true }, onBookmarks = { showBookmarks = true }, onListen = { vm.readAloud(ctx) }, onSettings = { showSettings = true; menu = false },
+                    onNight = vm::toggleNight,
+                )
+            }
         }
-        AnimatedVisibility(menu, Modifier.align(Alignment.BottomCenter), enter = fadeIn() + slideInVertically { it }, exit = fadeOut() + slideOutVertically { it }) {
-            BottomMenu(
-                s, vm, listening = ra.playing, session = listening, rate = settings.readAloudRate,
-                onRate = { r -> vm.updateSettings { it.copy(readAloudRate = (r.coerceIn(ReadAloud.MIN_RATE, ReadAloud.MAX_RATE) / ReadAloud.RATE_STEP).roundToInt() * ReadAloud.RATE_STEP) } },
-                onToc = { showToc = true }, onListen = { vm.readAloud(ctx) }, onSettings = { showSettings = true },
-                onCache = if (isLocal) null else ({ showCache = true }),
-                autoPage = autoPage, onAuto = { autoPage = !autoPage; if (autoPage) menu = false },
-            )
+        // 自动翻页时右上角有个小标记，点一下停
+        AnimatedVisibility(autoPage && !menu, Modifier.align(Alignment.TopEnd).windowInsetsPadding(StableInsets).padding(top = 4.dp, end = 8.dp), enter = fadeIn(), exit = fadeOut()) {
+            Surface(onClick = { autoPage = false }, shape = androidx.compose.foundation.shape.RoundedCornerShape(50), color = fg.copy(alpha = 0.12f), contentColor = fg) {
+                Row(Modifier.padding(horizontal = 10.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Outlined.StopCircle, null, Modifier.size(14.dp))
+                    Text("自动翻页中", Modifier.padding(start = 4.dp), fontSize = 11.sp)
+                }
+            }
         }
-        androidx.compose.material3.SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 72.dp))
+        androidx.compose.material3.SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = if (menu) 180.dp else 24.dp))
         if (s.busy) CircularProgressIndicator(Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(16.dp).size(24.dp), color = fg)
+        TapGuide(guide && s.loaded && s.error == null, scroll = settings.pageMode == PageMode.Scroll, allNext = settings.tapAllNext) {
+            vm.updateSettings { it.copy(tapGuideShown = true) }
+        }
+    }
     }
 
-    if (showToc) TocSheet(s.chapters.map { app.openread.engine.Chapter(it.idx, vm.title(it.title), it.url, it.isVolume) }, current = s.position.index, onDismiss = { showToc = false }) { idx ->
-        showToc = false; menu = false; vm.go(idx, 0, jump = true)
+    ReaderMenuTheme(dark) {
+        if (showToc) TocSheet(s.chapters.map { app.openread.engine.Chapter(it.idx, vm.title(it.title), it.url, it.isVolume) }, current = s.position.index, onDismiss = { showToc = false }) { idx ->
+            showToc = false; menu = false; vm.go(idx, 0, jump = true, keepBack = true)
+        }
+        if (showBookmarks) BookmarkSheet(vm, onDismiss = { showBookmarks = false }, onOpen = { showBookmarks = false; menu = false })
+        if (showCache) CacheSheet(vm, s) { showCache = false }
+        selection?.let { SelectSheet(it) { selection = null } }
+        if (showSettings) SettingsSheet(settings, vm::updateSettings) { showSettings = false }
+        if (showSwitch) SwitchSheet(vm) { showSwitch = false }
+        s.offer?.let { SwitchOfferDialog(it, onSwitch = vm::acceptOffer, onDismiss = vm::dismissOffer) }
+        DataAskDialog(vm.dataAsk)
     }
-    if (showBookmarks) BookmarkSheet(vm, onDismiss = { showBookmarks = false }, onOpen = { showBookmarks = false; menu = false })
-    if (showCache) CacheSheet(vm, s) { showCache = false }
-    selection?.let { SelectSheet(it) { selection = null } }
-    if (showSettings) SettingsSheet(settings, vm::updateSettings) { showSettings = false }
-    if (showSwitch) SwitchSheet(vm) { showSwitch = false }
-    s.offer?.let { SwitchOfferDialog(it, onSwitch = vm::acceptOffer, onDismiss = vm::dismissOffer) }
-    DataAskDialog(vm.dataAsk)
 }
+
+/** 当前这一页（滚动模式是这一屏）：第 [chapter] 章显示文字里的 [range]。 */
+data class PageSpan(val chapter: Int, val range: IntRange)
+
+/** 正文上的点击区域。 */
+enum class TapZone { Prev, Menu, Next }
 
 /** Immersive reading, brightness and keep-awake, undone when the reader closes. */
 @Composable
@@ -313,7 +393,8 @@ private sealed interface Slot {
 @Composable
 private fun SlideReader(
     vm: ReaderViewModel, s: ReaderState, look: ReaderLook, fg: Color, listen: ReadAloud.State, turner: PageTurner,
-    autoRun: Boolean, autoSeconds: Int, onToggleMenu: () -> Unit, onLongPress: (String) -> Unit,
+    autoRun: Boolean, autoSeconds: Int, info: Boolean, marks: List<app.openread.data.BookmarkRow>,
+    onTap: (TapZone) -> Unit, onPage: (PageSpan) -> Unit, onLongPress: (String) -> Unit,
 ) {
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
@@ -329,10 +410,12 @@ private fun SlideReader(
     val highlight = fg.copy(alpha = 0.16f)
     BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(StableInsets)) {
         val sidePad = look.margin
-        val topPad = 18.dp
-        val footerH = 28.dp
+        // 页眉页脚各占一行小字；关掉时只留一点空白
+        val topPad = if (info) 30.dp else 18.dp
+        val footerH = if (info) 30.dp else 12.dp
         val widthPx = with(density) { (maxWidth - sidePad * 2).roundToPx() }
-        val heightPx = with(density) { (maxHeight - topPad - footerH).roundToPx() }
+        // 各段分别取整，和 PageView 里页眉、页脚各自占的像素一致
+        val heightPx = with(density) { maxHeight.roundToPx() - topPad.roundToPx() - footerH.roundToPx() }
         val style = look.style
         val cache = remember(widthPx, heightPx, look) { HashMap<Pair<Int, Int>, ChapterPages>() }
 
@@ -410,6 +493,7 @@ private fun SlideReader(
                             } else {
                                 val start = slot.pages.pages[slot.page].start
                                 vm.record(cur, start)
+                                onPage(PageSpan(cur, start until slot.pages.pages[slot.page].end))
                                 // The first text on this page is where reading aloud goes on from, unless it is already on this page.
                                 val (paragraph, char) = Paginator.locate(slot.pages.paragraphs, slot.pages.starts, start)
                                 vm.noteVisible(cur, paragraph, char)
@@ -421,7 +505,10 @@ private fun SlideReader(
                                 }
                             }
                         }
-                        is Slot.Status -> if (slot.chapter != cur) vm.go(slot.chapter, if (slot.chapter < cur) Int.MAX_VALUE else 0)
+                        is Slot.Status -> {
+                            onPage(PageSpan(slot.chapter, 0 until 0))
+                            if (slot.chapter != cur) vm.go(slot.chapter, if (slot.chapter < cur) Int.MAX_VALUE else 0)
+                        }
                         null -> {}
                     }
                 }
@@ -446,11 +533,11 @@ private fun SlideReader(
                         },
                     ) { pos ->
                         val w = size.width
-                        when {
-                            pos.x < w * 0.3f -> scope.launch { turn(-1) }
-                            pos.x > w * 0.7f -> scope.launch { turn(1) }
-                            else -> onToggleMenu()
-                        }
+                        onTap(when {
+                            pos.x < w * 0.3f -> TapZone.Prev
+                            pos.x > w * 0.7f -> TapZone.Next
+                            else -> TapZone.Menu
+                        })
                     }
                 },
             ) {
@@ -460,7 +547,10 @@ private fun SlideReader(
                         is Slot.Content -> {
                             val span = listen.span?.takeIf { listening && listen.chapterIndex == slot.chapter && it.to > it.from }
                             val spoken = span?.let { slot.pages.offsetOf(it.paragraph, it.from) until slot.pages.offsetOf(it.paragraph, it.to) }
-                            PageView(slot, style, fg, sidePad, topPad, footerH, spoken, highlight, pageMod)
+                            val page = slot.pages.pages[slot.page]
+                            val hasMark = marks.any { it.chapterIndex == slot.chapter && it.offset >= page.start && it.offset < page.end }
+                            val percent = if (s.chapters.isEmpty()) 0f else (slot.chapter + (slot.page + 1f) / slot.pages.pages.size) / s.chapters.size
+                            PageView(slot, style, fg, sidePad, topPad, footerH, spoken, highlight, info, hasMark, percent, s.book?.name.orEmpty(), pageMod)
                         }
                         is Slot.Status -> Box(pageMod) { StatusView(slot, s, vm, fg) }
                     }
@@ -473,16 +563,31 @@ private fun SlideReader(
 @Composable
 private fun PageView(
     slot: Slot.Content, style: TextStyle, fg: Color, sidePad: androidx.compose.ui.unit.Dp, topPad: androidx.compose.ui.unit.Dp, footerH: androidx.compose.ui.unit.Dp,
-    spoken: IntRange?, highlight: Color, modifier: Modifier = Modifier,
+    spoken: IntRange?, highlight: Color, info: Boolean, marked: Boolean, percent: Float, bookName: String, modifier: Modifier = Modifier,
 ) {
     val page = slot.pages.pages[slot.page]
     val text = remember(page, spoken, highlight) { highlighted(page, spoken, highlight) }
-    Column(modifier.fillMaxSize().padding(horizontal = sidePad)) {
-        Text(text, style = style, modifier = Modifier.padding(top = topPad).weight(1f))
-        Row(Modifier.fillMaxWidth().height(footerH), verticalAlignment = Alignment.CenterVertically) {
-            Text(slot.pages.title, color = fg.copy(alpha = 0.5f), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-            Text("${slot.page + 1}/${slot.pages.pages.size}", color = fg.copy(alpha = 0.5f), fontSize = 11.sp)
+    Box(modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().padding(horizontal = sidePad)) {
+            if (info) ReaderHeader(if (slot.page == 0) bookName else slot.pages.title, fg, Modifier.height(topPad).padding(top = 6.dp))
+            Text(text, style = style, modifier = Modifier.padding(top = if (info) 0.dp else topPad).weight(1f))
+            if (info) ReaderFooter("${slot.page + 1}/${slot.pages.pages.size}", percent, fg, Modifier.height(footerH))
+            else Spacer(Modifier.height(footerH))
         }
+        if (marked) BookmarkRibbon(Modifier.align(Alignment.TopEnd).padding(end = sidePad))
+    }
+}
+
+/** 有书签的页右上角挂一条小书签。 */
+@Composable
+private fun BookmarkRibbon(modifier: Modifier = Modifier) {
+    val color = MaterialTheme.colorScheme.primary
+    androidx.compose.foundation.Canvas(modifier.size(width = 14.dp, height = 22.dp)) {
+        val p = androidx.compose.ui.graphics.Path().apply {
+            moveTo(0f, 0f); lineTo(size.width, 0f); lineTo(size.width, size.height)
+            lineTo(size.width / 2, size.height * 0.75f); lineTo(0f, size.height); close()
+        }
+        drawPath(p, color.copy(alpha = 0.85f))
     }
 }
 
@@ -520,7 +625,8 @@ private fun StatusView(slot: Slot.Status, s: ReaderState, vm: ReaderViewModel, f
 @Composable
 private fun ScrollReader(
     vm: ReaderViewModel, s: ReaderState, look: ReaderLook, fg: Color, listen: ReadAloud.State, turner: PageTurner,
-    autoRun: Boolean, autoSeconds: Int, onToggleMenu: () -> Unit, onLongPress: (String) -> Unit,
+    autoRun: Boolean, autoSeconds: Int, info: Boolean, marked: Boolean,
+    onTap: (TapZone) -> Unit, onPage: (PageSpan) -> Unit, onLongPress: (String) -> Unit,
 ) {
     // The list is anchored at the chapter the reader entered with; it only grows downwards. Re-anchoring happens when
     // the position jumps outside it (table of contents, slider, "previous chapter").
@@ -534,6 +640,7 @@ private fun ScrollReader(
 
     val bookUrl = rememberUpdatedState(s.book?.bookUrl)
     val listenNow = rememberUpdatedState(listen)
+    val onPageNow = rememberUpdatedState(onPage)
     val listening = listen.active && listen.bookUrl == s.book?.bookUrl
     // As in the paging reader: scrolling moves reading aloud along, but only once the list has caught up with a session
     // that was already running when the reader opened.
@@ -587,6 +694,26 @@ private fun ScrollReader(
         vmRef.value.record(ch, starts[paragraph] + char)
         val ra = listenNow.value
         if (seek && alignedNow.value && ra.active && ra.bookUrl == bookUrl.value && !spokenVisible(ra)) ReadAloud.seek(ch, paragraph, char)
+    }
+
+    /** 这一屏在顶上那一章里的范围（书签按钮、书签角标用）：从屏幕顶上的字到底边对着的字，下半截已是下一章时到本章末尾。 */
+    fun visibleSpan(): PageSpan? {
+        val top = list.layoutInfo.visibleItemsInfo.firstOrNull { it.index >= 1 && it.offset + it.size > 0 } ?: return null
+        val ch = first + top.index - 1
+        val (paragraphs, starts) = paragraphsOf(ch) ?: return null
+        val layout = layouts[ch] ?: return null
+        val bodyTop = bodyTops[ch] ?: return null
+        val bodyStart = paragraphs[0].length + 2
+        val y = -top.offset - bodyTop
+        val from = if (y <= 0f) 0 else Paginator.locate(paragraphs, starts, layout.getOffsetForPosition(Offset(0f, y)) + bodyStart).let { (p, c) -> starts[p] + c }
+        // item 的偏移从上边的 contentPadding 之后算起，屏幕底边对应 viewportEndOffset
+        val yEnd = y + list.layoutInfo.viewportEndOffset
+        val end = if (yEnd >= layout.size.height) bodyStart + layout.layoutInput.text.length + 1 else layout.getOffsetForPosition(Offset(0f, yEnd)) + bodyStart
+        return PageSpan(ch, from until maxOf(end, from + 1))
+    }
+    LaunchedEffect(Unit) {
+        // 每次布局都看一眼（正文排好、滚动、换章都会触发），范围变了才报
+        snapshotFlow { list.layoutInfo }.map { visibleSpan() }.distinctUntilChanged().collect { it?.let { r -> onPageNow.value(r) } }
     }
 
     /** 把第 [ch] 章的显示位置 [offset] 滚到屏幕顶上；正文还没加载、还没排好时等一会儿（最多约 10 秒）。 */
@@ -675,7 +802,8 @@ private fun ScrollReader(
         var prev = withFrameNanos { it }
         var lastReport = prev
         var carry = 0f
-        while (true) {
+        // 停下（菜单打开、面板打开、关掉自动滚动）时补记一次，书签和“回到原处”用的是停下时的位置
+        try { while (true) {
             val now = withFrameNanos { it }
             val vp = list.layoutInfo.viewportSize.height
             carry += vp * ((now - prev) / 1e9f) / autoSeconds
@@ -684,7 +812,7 @@ private fun ScrollReader(
             if (px > 0 && !list.isScrollInProgress) { carry -= px; list.dispatchRawDelta(px.toFloat()) }
             if (now - lastReport > 2_000_000_000L) { lastReport = now; report(seek = false) }
             if (!list.canScrollForward && last >= s.chapters.lastIndex) break
-        }
+        } } finally { report(seek = false) }
     }
 
     // Reading aloud moves on: scroll so that the sentence being read stays in view.
@@ -728,8 +856,31 @@ private fun ScrollReader(
         }
     }
 
-    Box(Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures(onLongPress = { onLongPress(visibleText()) }) { onToggleMenu() } }) {
-        LazyColumn(Modifier.fillMaxSize().windowInsetsPadding(StableInsets), state = list, contentPadding = PaddingValues(horizontal = look.margin, vertical = 16.dp)) {
+    // 页眉页脚：本章名、时间电量、全书进度，钉在上下两边，正文从它们中间滚过去
+    val topItem by remember { derivedStateOf { list.layoutInfo.visibleItemsInfo.firstOrNull { it.index >= 1 && it.offset + it.size > 0 } } }
+    val headerChapter = topItem?.let { first + it.index - 1 } ?: s.position.index
+    val percent = topItem?.let { t ->
+        val within = if (t.size <= 0) 0f else (-t.offset).coerceAtLeast(0).toFloat() / t.size
+        (headerChapter + within.coerceIn(0f, 1f)) / s.chapters.size.coerceAtLeast(1)
+    } ?: (s.position.index.toFloat() / s.chapters.size.coerceAtLeast(1))
+    val barH = if (info) 26.dp else 0.dp
+    Box(Modifier.fillMaxSize().windowInsetsPadding(StableInsets).pointerInput(Unit) {
+        detectTapGestures(onLongPress = { onLongPress(visibleText()) }) { pos ->
+            // 上中下三块：上面往回翻一屏，下面往下翻一屏，中间出菜单
+            val h = size.height
+            onTap(when {
+                pos.y < h * 0.3f -> TapZone.Prev
+                pos.y > h * 0.7f -> TapZone.Next
+                else -> TapZone.Menu
+            })
+        }
+    }) {
+        if (info) {
+            ReaderHeader(titleOf(headerChapter), fg, Modifier.align(Alignment.TopStart).height(barH).padding(horizontal = look.margin).padding(top = 6.dp))
+            ReaderFooter("", percent, fg, Modifier.align(Alignment.BottomStart).height(barH).padding(horizontal = look.margin))
+        }
+        if (marked) BookmarkRibbon(Modifier.align(Alignment.TopEnd).padding(end = look.margin))
+        LazyColumn(Modifier.fillMaxSize().padding(top = if (info) barH + 8.dp else 0.dp, bottom = barH).clipToBounds(), state = list, contentPadding = PaddingValues(horizontal = look.margin, vertical = 16.dp)) {
             item(key = "top") {
                 if (first > 0) TextButton(onClick = { first -= 1; vm.go(first, 0) }) { Text("上一章：${titleOf(first - 1)}", color = fg.copy(alpha = 0.7f)) }
             }
@@ -784,44 +935,76 @@ private fun ScrollReader(
 
 @Composable
 private fun BottomMenu(
-    s: ReaderState, vm: ReaderViewModel, listening: Boolean, session: Boolean, rate: Float, onRate: (Float) -> Unit,
-    onToc: () -> Unit, onListen: () -> Unit, onSettings: () -> Unit, onCache: (() -> Unit)?, autoPage: Boolean, onAuto: () -> Unit,
+    s: ReaderState, vm: ReaderViewModel, listening: Boolean, session: Boolean, rate: Float, dark: Boolean, onRate: (Float) -> Unit,
+    onToc: () -> Unit, onBookmarks: () -> Unit, onListen: () -> Unit, onSettings: () -> Unit, onNight: () -> Unit,
 ) {
-    Surface(color = MaterialTheme.colorScheme.surfaceContainer, tonalElevation = 3.dp) {
-        Column(Modifier.navigationBarsPadding().padding(vertical = 8.dp)) {
-            val last = s.chapters.lastIndex.coerceAtLeast(1)
-            Row(Modifier.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = { vm.go(s.position.index - 1, jump = true) }, enabled = s.position.index > 0) { Text("上一章") }
-                var dragging by remember { mutableStateOf<Float?>(null) }
-                Slider(
-                    value = dragging ?: s.position.index.toFloat(),
-                    onValueChange = { dragging = it },
-                    onValueChangeFinished = { dragging?.let { vm.go(it.roundToInt(), jump = true) }; dragging = null },
-                    valueRange = 0f..last.toFloat(), modifier = Modifier.weight(1f),
-                )
-                TextButton(onClick = { vm.go(s.position.index + 1, jump = true) }, enabled = s.position.index < s.chapters.lastIndex) { Text("下一章") }
-            }
-            Text(
-                "${vm.title(s.chapters.getOrNull(s.position.index)?.title.orEmpty())}（${s.position.index + 1}/${s.chapters.size}）",
-                style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 20.dp),
-            )
-            // The speed is within reach while a read-aloud session exists; the settings sheet has the same control.
-            if (session) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("语速", Modifier.padding(end = 16.dp), style = MaterialTheme.typography.labelLarge)
-                    FilledTonalIconButton(onClick = { onRate(rate - ReadAloud.RATE_STEP) }, enabled = rate > ReadAloud.MIN_RATE) { Text("慢") }
-                    Text("%.2f×".format(rate), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                    FilledTonalIconButton(onClick = { onRate(rate + ReadAloud.RATE_STEP) }, enabled = rate < ReadAloud.MAX_RATE) { Text("快") }
-                    SleepButton()
+    Column(horizontalAlignment = Alignment.End) {
+        // 跳走之后给一个“回到原处”；日间 / 夜间切换放在菜单右上角，随手就能点
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            val back = s.back
+            androidx.compose.animation.AnimatedVisibility(back != null, enter = fadeIn() + androidx.compose.animation.expandHorizontally(), exit = fadeOut() + androidx.compose.animation.shrinkHorizontally()) {
+                Surface(onClick = vm::jumpBack, shape = androidx.compose.foundation.shape.RoundedCornerShape(50), color = MaterialTheme.colorScheme.surfaceContainerHighest, shadowElevation = 3.dp) {
+                    Row(Modifier.padding(start = 12.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.AutoMirrored.Outlined.Undo, null, Modifier.size(18.dp))
+                        Text(
+                            "回到 " + vm.title(s.chapters.getOrNull(back?.index ?: 0)?.title.orEmpty()),
+                            Modifier.padding(start = 6.dp).widthIn(max = 200.dp), style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        )
+                        IconButton(onClick = vm::dropBack, Modifier.size(32.dp)) { Icon(Icons.Outlined.Close, "不回去了", Modifier.size(16.dp)) }
+                    }
                 }
             }
-            Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-                MenuButton(Icons.AutoMirrored.Outlined.FormatListBulleted, "目录", onToc)
-                if (onCache != null) MenuButton(Icons.Outlined.Download, "缓存", onCache)
-                if (listening) MenuButton(Icons.Outlined.Pause, "暂停", onListen) else MenuButton(Icons.Outlined.PlayArrow, "听书", onListen)
-                MenuButton(if (autoPage) Icons.Outlined.StopCircle else Icons.Outlined.SlowMotionVideo, if (autoPage) "停止自动" else "自动翻页", onAuto)
-                MenuButton(Icons.Outlined.Settings, "设置", onSettings)
+            Spacer(Modifier.weight(1f))
+            androidx.compose.material3.SmallFloatingActionButton(onClick = onNight, containerColor = MaterialTheme.colorScheme.surfaceContainerHighest) {
+                androidx.compose.animation.Crossfade(dark, label = "night") { d ->
+                    if (d) Icon(Icons.Outlined.LightMode, "日间模式") else Icon(Icons.Outlined.DarkMode, "夜间模式")
+                }
+            }
+        }
+        Surface(color = MaterialTheme.colorScheme.surfaceContainer, tonalElevation = 3.dp, shape = androidx.compose.foundation.shape.RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)) {
+            Column(Modifier.navigationBarsPadding().padding(top = 12.dp, bottom = 4.dp)) {
+                val last = s.chapters.lastIndex.coerceAtLeast(1)
+                var dragging by remember { mutableStateOf<Float?>(null) }
+                // 拖进度条时这一行显示要去的那一章，松手才跳
+                val showIdx = dragging?.roundToInt() ?: s.position.index
+                Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        vm.title(s.chapters.getOrNull(showIdx)?.title.orEmpty()), Modifier.weight(1f),
+                        style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        color = if (dragging != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        "第 ${showIdx + 1}/${s.chapters.size} 章",
+                        style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 8.dp),
+                    )
+                }
+                Row(Modifier.padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { vm.go(s.position.index - 1, jump = true) }, enabled = s.position.index > 0) { Icon(Icons.Outlined.SkipPrevious, "上一章") }
+                    Slider(
+                        value = dragging ?: s.position.index.toFloat(),
+                        onValueChange = { dragging = it },
+                        onValueChangeFinished = { dragging?.let { vm.go(it.roundToInt(), jump = true, keepBack = true) }; dragging = null },
+                        valueRange = 0f..last.toFloat(), modifier = Modifier.weight(1f),
+                    )
+                    IconButton(onClick = { vm.go(s.position.index + 1, jump = true) }, enabled = s.position.index < s.chapters.lastIndex) { Icon(Icons.Outlined.SkipNext, "下一章") }
+                }
+                // The speed is within reach while a read-aloud session exists; the settings sheet has the same control.
+                androidx.compose.animation.AnimatedVisibility(session) {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("语速", Modifier.padding(end = 16.dp), style = MaterialTheme.typography.labelLarge)
+                        FilledTonalIconButton(onClick = { onRate(rate - ReadAloud.RATE_STEP) }, enabled = rate > ReadAloud.MIN_RATE) { Text("慢") }
+                        Text("%.2f×".format(rate), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                        FilledTonalIconButton(onClick = { onRate(rate + ReadAloud.RATE_STEP) }, enabled = rate < ReadAloud.MAX_RATE) { Text("快") }
+                        SleepButton()
+                    }
+                }
+                androidx.compose.material3.HorizontalDivider(Modifier.padding(horizontal = 20.dp, vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    MenuButton(Icons.AutoMirrored.Outlined.FormatListBulleted, "目录", onToc)
+                    MenuButton(Icons.Outlined.Bookmarks, "书签", onBookmarks)
+                    if (listening) MenuButton(Icons.Outlined.Pause, "暂停", onListen, active = true) else MenuButton(Icons.Outlined.Headphones, if (session) "继续听" else "听书", onListen, active = session)
+                    MenuButton(Icons.Outlined.TextFields, "设置", onSettings)
+                }
             }
         }
     }
@@ -852,11 +1035,12 @@ private fun SleepButton() {
 }
 
 @Composable
-private fun MenuButton(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
-    TextButton(onClick = onClick) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+private fun MenuButton(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit, active: Boolean = false) {
+    val color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+    TextButton(onClick = onClick, colors = androidx.compose.material3.ButtonDefaults.textButtonColors(contentColor = color)) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 6.dp)) {
             Icon(icon, label)
-            Text(label, style = MaterialTheme.typography.labelSmall)
+            Text(label, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 2.dp))
         }
     }
 }

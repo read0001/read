@@ -5,6 +5,14 @@ import android.net.Uri
 import android.os.SystemClock
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
@@ -57,7 +65,15 @@ fun AppNav(pendingSearch: String? = null, onSearchHandled: () -> Unit = {}) {
     androidx.compose.runtime.LaunchedEffect(pendingSearch) {
         if (!pendingSearch.isNullOrBlank()) { nav.navigate(Route.search(pendingSearch)); onSearchHandled() }
     }
-    NavHost(nav, startDestination = Route.MAIN) {
+    // 页面切换：新页面从右边滑进来，返回时滑回去；阅读页像翻开书一样淡入放大
+    val ease = androidx.compose.animation.core.FastOutSlowInEasing
+    NavHost(
+        nav, startDestination = Route.MAIN,
+        enterTransition = { slideInHorizontally(tween(300, easing = ease)) { it / 3 } + fadeIn(tween(300)) },
+        exitTransition = { slideOutHorizontally(tween(300, easing = ease)) { -it / 8 } + fadeOut(tween(250)) },
+        popEnterTransition = { slideInHorizontally(tween(300, easing = ease)) { -it / 8 } + fadeIn(tween(300)) },
+        popExitTransition = { slideOutHorizontally(tween(300, easing = ease)) { it / 3 } + fadeOut(tween(250)) },
+    ) {
         composable(Route.MAIN) {
             MainTabs(
                 onOpen = { nav.navigate(Route.reader(it.bookUrl)) },
@@ -79,6 +95,8 @@ fun AppNav(pendingSearch: String? = null, onSearchHandled: () -> Unit = {}) {
         }
         composable(
             Route.READER,
+            enterTransition = { scaleIn(tween(320, easing = ease), initialScale = 0.92f) + fadeIn(tween(320)) },
+            popExitTransition = { scaleOut(tween(260, easing = ease), targetScale = 0.92f) + fadeOut(tween(260)) },
             arguments = listOf(
                 navArgument("url") { type = NavType.StringType },
                 navArgument("index") { type = NavType.IntType; defaultValue = -1 },
@@ -131,8 +149,11 @@ private fun MainTabs(
             }
         },
     ) { pad ->
-        androidx.compose.foundation.layout.Box(Modifier.padding(pad)) {
-            when (tab) {
+        androidx.compose.animation.AnimatedContent(
+            tab, Modifier.padding(pad), label = "tab",
+            transitionSpec = { fadeIn(tween(220, delayMillis = 60)) togetherWith fadeOut(tween(120)) },
+        ) { shown ->
+            when (shown) {
                 0 -> ShelfScreen(onOpen = onOpen, onDetail = onDetail, onSearch = onSearch, onExplore = { tab = 1 })
                 1 -> ExploreScreen(onOpen = onOpenHit)
                 2 -> SourcesScreen()

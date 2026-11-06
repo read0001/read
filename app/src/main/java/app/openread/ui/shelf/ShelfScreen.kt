@@ -16,6 +16,17 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.background
+import androidx.compose.foundation.lazy.items as listItems
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.material.icons.automirrored.outlined.ViewList
+import androidx.compose.animation.togetherWith
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.Refresh
@@ -88,6 +99,11 @@ class ShelfViewModel(private val c: AppContainer) : ViewModel() {
             ShelfSort.Name -> list.sortedWith { a, b -> collator.compare(a.name, b.name) }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    /** 列表还是网格；null = 设置还没读出来（先不画，免得选了列表的人每次先闪一下网格）。 */
+    val listMode: StateFlow<Boolean?> = c.prefs.flow.map<_, Boolean?> { it.shelfList }.distinctUntilChanged().stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    fun toggleLayout() { viewModelScope.launch { c.prefs.update { it.copy(shelfList = !it.shelfList) } } }
 
     fun setSort(s: ShelfSort) { viewModelScope.launch { c.prefs.update { it.copy(shelfSort = s) } } }
 
@@ -211,6 +227,9 @@ fun ShelfScreen(onOpen: (BookRow) -> Unit, onDetail: (BookRow) -> Unit, onSearch
     val offers by vm.offers.collectAsState()
     val message by vm.message.collectAsState()
     val sort by vm.sort.collectAsState()
+    val listModeOrNull by vm.listMode.collectAsState()
+    val listMode = listModeOrNull == true
+    var removing by remember { mutableStateOf<BookRow?>(null) }
     var group by rememberSaveable { mutableStateOf<String?>(null) } // null = 全部，"" = 未分组
     var more by remember { mutableStateOf(false) }
     var grouping by remember { mutableStateOf<BookRow?>(null) }
@@ -235,9 +254,14 @@ fun ShelfScreen(onOpen: (BookRow) -> Unit, onDetail: (BookRow) -> Unit, onSearch
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            CenterAlignedTopAppBar(
+            androidx.compose.material3.TopAppBar(
                 title = { Text("书架") },
                 actions = {
+                    IconButton(onClick = vm::toggleLayout) {
+                        androidx.compose.animation.Crossfade(listMode, label = "layout") { l ->
+                            if (l) Icon(Icons.Outlined.GridView, "封面视图") else Icon(Icons.AutoMirrored.Outlined.ViewList, "列表视图")
+                        }
+                    }
                     IconButton(onClick = { refresh() }) { Icon(Icons.Outlined.Refresh, "检查更新") }
                     IconButton(onClick = onSearch) { Icon(Icons.Outlined.Search, "搜索") }
                     Box {
@@ -258,12 +282,21 @@ fun ShelfScreen(onOpen: (BookRow) -> Unit, onDetail: (BookRow) -> Unit, onSearch
         },
         snackbarHost = { SnackbarHost(snack) },
     ) { pad ->
+        removing?.let { b ->
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { removing = null },
+                title = { Text("移出书架？") },
+                text = { Text("《${b.name}》的阅读进度、书签和缓存会一起删除" + if (b.isLocal) "，导入的文件也会删掉。" else "。") },
+                confirmButton = { TextButton(onClick = { vm.remove(b); removing = null }) { Text("移出", color = MaterialTheme.colorScheme.error) } },
+                dismissButton = { TextButton(onClick = { removing = null }) { Text("取消") } },
+            )
+        }
         grouping?.let { b ->
             GroupDialog(b, books.orEmpty().map { it.shelfGroup }.filter { it.isNotBlank() }.distinct().sorted(), onDismiss = { grouping = null }) { g -> vm.setGroup(b, g); grouping = null }
         }
         val list = books
         when {
-            list == null -> Box(Modifier.fillMaxSize().padding(pad))
+            list == null || listModeOrNull == null -> Box(Modifier.fillMaxSize().padding(pad))
             list.isEmpty() -> EmptyState(
                 "书架还是空的", "搜索想看的书，或者导入手机里的 TXT / EPUB",
                 Modifier.padding(pad),
@@ -295,14 +328,22 @@ fun ShelfScreen(onOpen: (BookRow) -> Unit, onDetail: (BookRow) -> Unit, onSearch
               }
               val shown = when (active) { null -> list; "" -> list.filter { it.shelfGroup.isBlank() }; else -> list.filter { it.shelfGroup == group } }
               PullToRefreshBox(isRefreshing = refreshing, onRefresh = { refresh() }, modifier = Modifier.weight(1f).fillMaxWidth()) {
-                LazyVerticalGrid(
+                androidx.compose.animation.AnimatedContent(listMode, label = "shelf", transitionSpec = {
+                    androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(220)) togetherWith androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(120))
+                }) { asList ->
+                  if (asList) androidx.compose.foundation.lazy.LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 8.dp)) {
+                      listItems(shown, key = { it.bookUrl }) { b ->
+                          ShelfItem(b, list = true, onOpen = { onOpen(b) }, onDetail = { onDetail(b) }, onPin = { vm.togglePin(b) }, onGroup = { grouping = b }, onRemove = { removing = b }, modifier = Modifier.animateItem())
+                      }
+                  } else LazyVerticalGrid(
                     columns = GridCells.Adaptive(104.dp),
                     contentPadding = PaddingValues(16.dp),
                     horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(14.dp),
                     verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(18.dp),
                     modifier = Modifier.fillMaxSize(),
-                ) {
-                    items(shown, key = { it.bookUrl }) { b -> ShelfItem(b, onOpen = { onOpen(b) }, onDetail = { onDetail(b) }, onPin = { vm.togglePin(b) }, onGroup = { grouping = b }, onRemove = { vm.remove(b) }) }
+                  ) {
+                    items(shown, key = { it.bookUrl }) { b -> ShelfItem(b, list = false, onOpen = { onOpen(b) }, onDetail = { onDetail(b) }, onPin = { vm.togglePin(b) }, onGroup = { grouping = b }, onRemove = { removing = b }, modifier = Modifier.animateItem()) }
+                  }
                 }
               }
             }
@@ -330,30 +371,80 @@ private fun GroupDialog(book: BookRow, groups: List<String>, onDismiss: () -> Un
     )
 }
 
+/** 阅读进度的一句话：未读、读到百分之几、读完了。 */
+private fun progressOf(b: BookRow): String = when {
+    b.totalChapters <= 0 || (b.readAt <= b.addedAt && b.chapterIndex == 0 && b.chapterOffset == 0) -> "未读"
+    b.chapterIndex >= b.totalChapters - 1 -> "读到最后一章"
+    else -> "已读 ${((b.chapterIndex + 1) * 100 / b.totalChapters).coerceIn(1, 99)}%"
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ShelfItem(b: BookRow, onOpen: () -> Unit, onDetail: () -> Unit, onPin: () -> Unit, onGroup: () -> Unit, onRemove: () -> Unit) {
+private fun ShelfItem(b: BookRow, list: Boolean, onOpen: () -> Unit, onDetail: () -> Unit, onPin: () -> Unit, onGroup: () -> Unit, onRemove: () -> Unit, modifier: Modifier = Modifier) {
     var menu by remember { mutableStateOf(false) }
-    Column(Modifier.fillMaxWidth().combinedClickable(onClick = onOpen, onLongClick = { menu = true })) {
-        Box {
-            BookCover(b.coverUrl, b.name, Modifier.fillMaxWidth().aspectRatio(0.75f))
+    // 按下时封面微微缩一下，松手弹回
+    val press = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val pressed by press.collectIsPressedAsState()
+    val scale by androidx.compose.animation.core.animateFloatAsState(if (pressed) 0.95f else 1f, androidx.compose.animation.core.spring(stiffness = 600f), label = "press")
+    val click = Modifier.combinedClickable(interactionSource = press, indication = if (list) androidx.compose.foundation.LocalIndication.current else null, onClick = onOpen, onLongClick = { menu = true })
+    val cover: @Composable (Modifier) -> Unit = { m ->
+        Box(m.graphicsLayer { scaleX = scale; scaleY = scale }) {
+            BookCover(b.coverUrl, b.name, Modifier.fillMaxSize().shadow(3.dp, RoundedCornerShape(8.dp)))
             if (b.sourcePinned) Box(
                 Modifier.align(Alignment.TopStart).padding(6.dp).size(20.dp).background(androidx.compose.ui.graphics.Color(0x99000000), CircleShape),
                 contentAlignment = Alignment.Center,
             ) { Icon(Icons.Filled.PushPin, "已固定书源", Modifier.size(12.dp), tint = androidx.compose.ui.graphics.Color.White) }
-            if (b.hasUpdate) Box(
-                Modifier.align(Alignment.TopEnd).padding(6.dp).size(10.dp).background(Unread, CircleShape),
+            if (b.hasUpdate) Text(
+                "更新", color = androidx.compose.ui.graphics.Color.White, style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.align(Alignment.TopEnd).background(Unread, RoundedCornerShape(topEnd = 8.dp, bottomStart = 8.dp)).padding(horizontal = 5.dp, vertical = 1.dp),
             )
-            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                // 本地书没有书源：没有详情页，也不用固定书源
-                if (!b.isLocal) DropdownMenuItem(text = { Text("书籍详情") }, onClick = { menu = false; onDetail() })
-                if (!b.isLocal) DropdownMenuItem(text = { Text(if (b.sourcePinned) "取消固定书源" else "固定书源") }, onClick = { menu = false; onPin() })
-                DropdownMenuItem(text = { Text(if (b.shelfGroup.isBlank()) "设置分组" else "分组：${b.shelfGroup}") }, onClick = { menu = false; onGroup() })
-                DropdownMenuItem(text = { Text("移出书架") }, onClick = { menu = false; onRemove() })
+            // 封面底部一条细进度
+            if (b.totalChapters > 0 && progressOf(b) != "未读") androidx.compose.material3.LinearProgressIndicator(
+                progress = { ((b.chapterIndex + 1f) / b.totalChapters).coerceIn(0f, 1f) },
+                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(3.dp).clip(RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp)),
+                trackColor = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.25f), drawStopIndicator = {}, gapSize = 0.dp,
+            )
+        }
+    }
+    val menuItems: @Composable () -> Unit = {
+        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+            // 本地书没有书源：没有详情页，也不用固定书源
+            if (!b.isLocal) DropdownMenuItem(text = { Text("书籍详情") }, onClick = { menu = false; onDetail() })
+            if (!b.isLocal) DropdownMenuItem(text = { Text(if (b.sourcePinned) "取消固定书源" else "固定书源") }, onClick = { menu = false; onPin() })
+            DropdownMenuItem(text = { Text(if (b.shelfGroup.isBlank()) "设置分组" else "分组：${b.shelfGroup}") }, onClick = { menu = false; onGroup() })
+            DropdownMenuItem(text = { Text("移出书架", color = MaterialTheme.colorScheme.error) }, onClick = { menu = false; onRemove() })
+        }
+    }
+    if (list) {
+        androidx.compose.foundation.layout.Row(modifier.fillMaxWidth().then(click).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box {
+                cover(Modifier.width(60.dp).height(80.dp))
+                menuItems()
+            }
+            Column(Modifier.padding(start = 14.dp).weight(1f)) {
+                Text(b.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    listOf(b.author.ifBlank { "佚名" }, if (b.isLocal) "本地" else b.originName).filter { it.isNotBlank() }.joinToString(" · "),
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    progressOf(b) + (b.chapterTitle?.takeIf { progressOf(b) != "未读" }?.let { " · $it" } ?: ""),
+                    style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp),
+                )
+                b.latestChapter?.takeIf { it.isNotBlank() }?.let {
+                    Text(
+                        "最新：$it", style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        color = if (b.hasUpdate) Unread else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
-        Text(b.name, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
-        val progress = if (b.totalChapters > 0) "${b.chapterIndex + 1}/${b.totalChapters}" else "未读"
-        Text(progress, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    } else Column(modifier.fillMaxWidth().then(click)) {
+        Box {
+            cover(Modifier.fillMaxWidth().aspectRatio(0.75f))
+            menuItems()
+        }
+        Text(b.name, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
+        Text(progressOf(b), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
