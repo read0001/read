@@ -7644,47 +7644,6 @@
     }
   },
   {
-    "bookSourceUrl": "https://www.quanwenyuedu.io",
-    "bookSourceName": "免费小说",
-    "bookSourceGroup": "📃论坛（Tg敏感资源库:https://t.me/+Gk4E1u5cvaxhYTY1）",
-    "bookSourceComment": "",
-    "exploreUrl": "奇幻玄幻::/c/1-{{page}}.html\n武侠仙侠::/c/2-{{page}}.html\n都市官场::/c/3-{{page}}.html\n历史军事::/c/4-{{page}}.html\n言情穿越::/c/5-{{page}}.html\n灵异悬疑::/c/6-{{page}}.html\n游戏竞技::/c/7-{{page}}.html\n青春耽美::/c/8-{{page}}.html\n科幻同人::/c/9-{{page}}.html\n经典畅销::/c/10-{{page}}.html\n图书杂志::/c/11-{{page}}.html\n其它分类::/c/0-{{page}}.html",
-    "searchUrl": "/index.php?c=xs&a=search&keywords={{key}}",
-    "bookSourceType": 0,
-    "customOrder": 1220,
-    "lastUpdateTime": 1736558078718,
-    "respondTime": 6825,
-    "weight": 0,
-    "enabled": true,
-    "enabledExplore": true,
-    "enabledCookieJar": true,
-    "ruleSearch": {
-      "author": "p span@text",
-      "bookList": ".box .top",
-      "bookUrl": "a@href",
-      "coverUrl": "img@src",
-      "intro": "p.1@text",
-      "kind": "",
-      "name": "h3@text"
-    },
-    "ruleBookInfo": {
-      "author": "p.1@span@text",
-      "intro": ".description@text",
-      "kind": "p[2,3]@span@text",
-      "name": ".title@text",
-      "tocUrl": "text.目录@href"
-    },
-    "ruleToc": {
-      "chapterList": ".list li a",
-      "chapterName": "text",
-      "chapterUrl": "href"
-    },
-    "ruleContent": {
-      "content": "#content p@textNodes",
-      "replaceRegex": "##《{{book.name}}》.*"
-    }
-  },
-  {
     "bookSourceUrl": "https://www.quanben5.com",
     "bookSourceName": "全本小说网⑤",
     "bookSourceGroup": "网络,自制",
