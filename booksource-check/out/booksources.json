@@ -7725,45 +7725,6 @@
     }
   },
   {
-    "bookSourceUrl": "https://www.p3xs.com",
-    "bookSourceName": "悠悠书盟①",
-    "bookSourceGroup": "小说",
-    "bookUrlPattern": "",
-    "loginUrl": "",
-    "bookSourceComment": "",
-    "exploreUrl": "总排行榜::https://www.p3xs.com/rank/\n全本小说::https://www.p3xs.com/quanben/category/{{page}}/\n全部小说::https://www.p3xs.com/category/{{page}}/\n玄幻小说::https://www.p3xs.com/category/1/{{page}}/\n武侠小说::https://www.p3xs.com/category/2/{{page}}/\n都市小说::https://www.p3xs.com/category/3/{{page}}/\n历史小说::https://www.p3xs.com/category/4/{{page}}/\n网游小说::https://www.p3xs.com/category/5/{{page}}/\n科幻小说::https://www.p3xs.com/category/6/{{page}}/\n耽美小说::https://www.p3xs.com/category/7/{{page}}/\n其他小说::https://www.p3xs.com/category/8/{{page}}/",
-    "searchUrl": "https://www.p3xs.com/search/,{\n  \"method\": \"POST\",\n  \"body\": \"searchkey={{key}}\"\n}",
-    "bookSourceType": 0,
-    "customOrder": 25174,
-    "lastUpdateTime": 0,
-    "respondTime": 180000,
-    "weight": 0,
-    "enabled": true,
-    "enabledExplore": true,
-    "enabledCookieJar": false,
-    "ruleSearch": {
-      "author": "span@text",
-      "bookList": "class.fengtui@dl",
-      "bookUrl": "a@href",
-      "coverUrl": "img@data-original",
-      "name": "h3@a@text"
-    },
-    "ruleBookInfo": {
-      "coverUrl": "class.lf@img@src",
-      "intro": "class.intro@textNodes",
-      "lastChapter": "class.msg@em@a@text"
-    },
-    "ruleToc": {
-      "chapterList": "class.mulu@li@a",
-      "chapterName": "text",
-      "chapterUrl": "href"
-    },
-    "ruleContent": {
-      "content": "id.content@p@textNodes##（未完待续）",
-      "nextContentUrl": "text.下一页@href"
-    }
-  },
-  {
     "bookSourceUrl": "https://www.myyqxs.cc",
     "bookSourceName": "我的言情小说",
     "bookSourceGroup": "",
