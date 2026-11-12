@@ -3054,52 +3054,69 @@
     "weight": 0
   },
   {
-    "bookSourceComment": "Error: Unable to resolve host \"www.kenshuwx.com\": No address associated with hostname\n                    \"error:Timed out waiting for 180000 ms\n                                        \"error:Timed out waiting for 180000 ms\n                    \"error:Timed out waiting for 180000 ms\n\"\"\"",
-    "bookSourceGroup": "校验可用",
-    "bookSourceName": "🎉 啃书阁",
+    "bookSourceComment": "",
+    "bookSourceGroup": "🔞",
+    "bookSourceName": "🚬 搜小说",
     "bookSourceType": 0,
-    "bookSourceUrl": "http://www.kenshuwx.com",
+    "bookSourceUrl": "https://wap.sou78.com",
     "bookUrlPattern": "",
-    "customOrder": 1472,
+    "customOrder": 1501,
     "enabled": true,
-    "enabledCookieJar": true,
+    "enabledCookieJar": false,
     "enabledExplore": true,
-    "exploreUrl": "玄幻·连载::/xuanhuan/lianzai/{{page}}/\n武侠·连载::/wuxia/lianzai/{{page}}/\n言情·连载::/yanqing/lianzai/{{page}}/\n历史·连载::/lishi/lianzai/{{page}}/\n科幻·连载::/kehuan/lianzai/{{page}}/\n恐怖·连载::/kongbu/lianzai/{{page}}/\n女生·连载::/nvsheng/lianzai/{{page}}/\n玄幻·完本::/xuanhuan/quanben/{{page}}/\n武侠·完本::/wuxia/quanben/{{page}}/\n言情·完本::/yanqing/quanben/{{page}}/\n历史·完本::/lishi/quanben/{{page}}/\n科幻·完本::/kehuan/quanben/{{page}}/\n恐怖·完本::/kongbu/quanben/{{page}}/\n女生·完本::/nvsheng/quanben/{{page}}/",
-    "lastUpdateTime": 1601020936315,
-    "loginUrl": "",
-    "respondTime": 2151,
+    "exploreUrl": "玄幻奇幻::https://wap.sou78.com/sort/1_{{page}}/\n武侠仙侠::https://wap.sou78.com/sort/2_{{page}}/\n都市言情::https://wap.sou78.com/sort/3_{{page}}/\n科幻网游::https://wap.sou78.com/sort/4_{{page}}/\n惊悚悬疑::https://wap.sou78.com/sort/5_{{page}}/\n耽美同人::https://wap.sou78.com/sort/6_{{page}}/\n穿越架空::https://wap.sou78.com/sort/7_{{page}}/\n高辣浓情::https://wap.sou78.com/sort/8_{{page}}/\n禁忌百合::https://wap.sou78.com/sort/9_{{page}}/\n精品文学::https://wap.sou78.com/sort/10_{{page}}/",
+    "header": "",
+    "lastUpdateTime": 1668708404197,
+    "respondTime": 8761,
     "ruleBookInfo": {
-      "intro": "class.book-intro@tag.div.0@text",
-      "tocUrl": "text.查看目录@tag.a@href"
+      "author": "class.tab@tag.p.0@text",
+      "coverUrl": "class.tu@tag.img@src",
+      "intro": "class.jj@tag.p@text",
+      "kind": "class.tab@tag.tab1@p.0@text",
+      "lastChapter": "class.tab@tag.p.2@a@text",
+      "name": "tag.h1@text",
+      "tocUrl": "",
+      "wordCount": "class.tab@tag.tab1@p.2@text"
     },
     "ruleContent": {
-      "content": "class.article-con@html##最新网址.*"
+      "content": "id.novelcontent@textNodes",
+      "nextContentUrl": "text.下一章@href",
+      "replaceRegex": "",
+      "sourceRegex": "",
+      "webJs": ""
     },
     "ruleExplore": {
-      "bookList": "class.box",
-      "bookUrl": "class.booktitle@tag.a.0@href",
-      "coverUrl": "class.lazy@tag.img.0@src",
-      "intro": "class.gray6@tag.span.0@text",
-      "kind": "tag.p.0@text##\\[|\\].*",
-      "lastChapter": "class.booktitle@tag.a.1@text",
-      "name": "class.booktitle@tag.a.0@text"
+      "author": "class.right@class.label@tag.p.2@a@text",
+      "bookList": "class.tt",
+      "bookUrl": "class.right@tag.p.0@a@href",
+      "coverUrl": "class.left@tag.a@img@src",
+      "intro": "class.p5@text",
+      "kind": "class.right@class.label@tag.p.0@text",
+      "lastChapter": "",
+      "name": "class.right@tag.p.0@a@text",
+      "wordCount": "class.right@class.label@tag.p.1@text"
     },
+    "ruleReview": {},
     "ruleSearch": {
-      "author": "class.author@tag.p.0@text##作者：",
-      "bookList": "class.search-list@tag.li||class.box",
-      "bookUrl": "tag.a.1@href",
-      "coverUrl": "class.col-l@tag.img.0@src",
-      "intro": "class.intro@@tag.p.0@text##作品简介：",
-      "kind": "",
-      "lastChapter": "class.latest@tag.p.0@text##最后更新：",
-      "name": "tag.a.1@text"
+      "author": "tag.a.2@text",
+      "bookList": "class.search_list",
+      "bookUrl": "tag.a.0@href",
+      "coverUrl": "",
+      "intro": "",
+      "kind": "tag.a.1@text",
+      "lastChapter": "",
+      "name": "tag.a.0@text",
+      "wordCount": ""
     },
     "ruleToc": {
-      "chapterList": "class.clearfix chapter-list@tag.li",
+      "chapterList": "class.info_chapters@class.p2.1@tag.li",
       "chapterName": "tag.a@text",
-      "chapterUrl": "tag.a@href"
+      "chapterUrl": "tag.a@href",
+      "isVip": "",
+      "nextTocUrl": "text.下一页@href",
+      "updateTime": ""
     },
-    "searchUrl": "/modules/article/search.php?area=2&searchkey={{key}}&page={{page}}",
+    "searchUrl": "https://wap.sou78.com/s.php,{\n  \"charset\": \"gbk\",\n  \"method\": \"POST\",\n  \"body\": \"s={{key}}&type=articlename\"\n}",
     "weight": 0
   },
   {
