@@ -99,63 +99,6 @@
     "weight": 0
   },
   {
-    "bookSourceComment": "精准搜索",
-    "bookSourceGroup": "精品",
-    "bookSourceName": "笔趣阁③",
-    "bookSourceType": 0,
-    "bookSourceUrl": "https://www.biquge99.cc/",
-    "bookUrlPattern": "https://www.biquge99.cc/book/\\d+/",
-    "customOrder": -263,
-    "enabled": true,
-    "enabledCookieJar": false,
-    "enabledExplore": true,
-    "exploreUrl": "[{\"title\":\"玄幻小说\",\"url\":\"/xuanhuan/\",\"style\":{\"layout_flexGrow\":0.25}},{\"title\":\"武侠小说\",\"url\":\"/wuxia/\",\"style\":{\"layout_flexGrow\":0.25}},{\"title\":\"都市小说\",\"url\":\"/dushi/\",\"style\":{\"layout_flexGrow\":0.25}},{\"title\":\"历史小说\",\"url\":\"/lishi/\",\"style\":{\"layout_flexGrow\":0.25}},{\"title\":\"网游小说\",\"url\":\"/wangyou/\",\"style\":{\"layout_flexGrow\":0.25}},{\"title\":\"科幻小说\",\"url\":\"/kehuan/\",\"style\":{\"layout_flexGrow\":0.25}},{\"title\":\"女生小说\",\"url\":\"/mm/\",\"style\":{\"layout_flexGrow\":0,\"layout_flexBasisPercent\":0.29}}]",
-    "header": "{\n  \"User-Agent\": \"Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/47.0.2526.73 Safari/537.36\"\n}",
-    "lastUpdateTime": 1692661009662,
-    "loginUrl": "",
-    "respondTime": 16205,
-    "ruleBookInfo": {
-      "author": "class.info@class.small@tag.span.0@text##作者：",
-      "coverUrl": "class.cover@img@src",
-      "init": "",
-      "intro": "class.intro@text##简介：",
-      "kind": "class.info@class.small@tag.span.4@text&&\nclass.info@class.small@tag.span.2@text&&\nclass.info@class.small@tag.span.1@text##分类：|状态：|更新时间：",
-      "lastChapter": "class.info@class.small@tag.span.5@a@text##免费章节 |正文卷 |正文 |VIP章节 |百度搜索.*",
-      "name": "class.info@h1@text##\\（.*|\\(.*|免费阅读|全文.*阅读|最新章节|笔趣阁|小说"
-    },
-    "ruleContent": {
-      "content": "id.content@textNodes##请记住本书.*cc"
-    },
-    "ruleExplore": {
-      "author": "class.s4@text",
-      "bookList": "class.l@li",
-      "bookUrl": "class.s2@a@href",
-      "coverUrl": "class.s2@a@href<js>\nvar id = result.match(/(\\d+)\\/?$/)[1];\n'https://www.biquge99.cc/bookimages/'+id+'.jpg';\n</js>",
-      "kind": "class.s5@text",
-      "lastChapter": "class.s3@a@text",
-      "name": "class.s2@a@text"
-    },
-    "ruleReview": {},
-    "ruleSearch": {
-      "author": "class.author@text##作者：|<",
-      "bookList": "class.bookbox",
-      "bookUrl": "class.bookname@tag.a@href",
-      "checkKeyWord": "万族之劫",
-      "coverUrl": "class.bookimg@tag.img.0@src",
-      "intro": "class.bookinfo@p@text",
-      "kind": "class.cat@text##分类：",
-      "lastChapter": "class.update@tag.a@text##免费章节 |正文卷 |正文 |VIP章节 |百度搜索.*",
-      "name": "class.bookname@tag.a@text##\\（.*|\\(.*|免费阅读|全文.*阅读|最新章节|笔趣阁|小说"
-    },
-    "ruleToc": {
-      "chapterList": "class.listmain@tag.dd@tag.a",
-      "chapterName": "text",
-      "chapterUrl": "href"
-    },
-    "searchUrl": "https://www.biquge99.cc/s.php?ie=gbk&q={{key}}",
-    "weight": 0
-  },
-  {
     "bookSourceComment": "",
     "bookSourceGroup": "精品",
     "bookSourceName": "笔趣阁㉒",
@@ -558,53 +501,6 @@
       "nextTocUrl": "text.下一页@href"
     },
     "searchUrl": "https://wap.po18bl.com/modules/article/search.php,{\n\"charset\": \"utf-8\",\n\"method\": \"POST\",\n\"body\": \"searchkey={{key}}&searchtype=all\"\n}",
-    "weight": 0
-  },
-  {
-    "bookSourceComment": "",
-    "bookSourceGroup": "校验可用",
-    "bookSourceName": "🎉 顶点小说",
-    "bookSourceType": 0,
-    "bookSourceUrl": "https://www.ddyueshu.com",
-    "customOrder": 246,
-    "enabled": true,
-    "enabledCookieJar": true,
-    "enabledExplore": true,
-    "exploreUrl": "首页::https://www.ddyueshu.com/\n玄幻::https://www.ddyueshu.com/xuanhuanxiaoshuo/\n修真::https://www.ddyueshu.com/xiuzhenxiaoshuo/\n都市::https://www.ddyueshu.com/dushixiaoshuo/\n穿越::https://www.ddyueshu.com/chuanyuexiaoshuo/\n网游::https://www.ddyueshu.com/wangyouxiaoshuo/\n科幻::https://www.ddyueshu.com/kehuanxiaoshuo/\n全部::https://www.ddyueshu.com/xiaoshuodaquan/",
-    "lastUpdateTime": 1680512184065,
-    "respondTime": 4839,
-    "ruleBookInfo": {
-      "author": "id.info@tag.p.0@text",
-      "coverUrl": "id.fmimg@tag.img@src",
-      "init": "",
-      "intro": "id.intro@text",
-      "kind": "class.tag@class.blue@text",
-      "lastChapter": "class.update-text@text",
-      "name": "id.info@tag.h1@text",
-      "tocUrl": ""
-    },
-    "ruleContent": {
-      "content": "id.content@all##请记住本书首发域名：ddyueshu.com。顶点小说手机版阅读网址：m.ddyueshu.com",
-      "nextContentUrl": "class.bottem1@tag.a.2@href"
-    },
-    "ruleExplore": {
-      "bookList": "tag.li.!0:1:2:3:4:5:6:7:8:9",
-      "bookUrl": "tag.a@href",
-      "name": "tag.a@text"
-    },
-    "ruleSearch": {
-      "author": "",
-      "bookList": "tag.li.!0:1:2:3:4:5:6:7:8:9",
-      "bookUrl": "tag.a@href",
-      "checkKeyWord": "",
-      "name": "tag.a@text"
-    },
-    "ruleToc": {
-      "chapterList": "tag.dl@tag.dd.!0:1:2:3:4:5",
-      "chapterName": "tag.a@text",
-      "chapterUrl": "tag.a@href"
-    },
-    "searchUrl": "https://www.ddyueshu.com/xiaoshuodaquan/",
     "weight": 0
   },
   {
@@ -1038,6 +934,61 @@
       "nextTocUrl": ""
     },
     "searchUrl": "https://www.aixiaxsw.com/modules/article/search.php?searchkey={{key}}&searchtype=articlename",
+    "weight": 0
+  },
+  {
+    "bookSourceComment": "",
+    "bookSourceGroup": "校验可用",
+    "bookSourceName": "👔 日居月诸",
+    "bookSourceType": 0,
+    "bookSourceUrl": "https://m.po18yu.com",
+    "customOrder": 448,
+    "enabled": true,
+    "enabledCookieJar": false,
+    "enabledExplore": true,
+    "exploreUrl": "[{\"title\":\"排  行\",\"url\":\"\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":1}},\n{\"title\":\"总推荐榜\",\"url\":\"https://m.po18yu.com/ranks/allvote/{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"总收藏榜\",\"url\":\"https://m.po18yu.com/ranks/goodnum/{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"总点击榜\",\"url\":\"https://m.po18yu.com/ranks/allvisit/{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"月点击榜\",\"url\":\"https://m.po18yu.com/ranks/monthvisit/{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"周点击榜\",\"url\":\"https://m.po18yu.com/ranks/weekvisit/{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"最新入库\",\"url\":\"https://m.po18yu.com/ranks/postdate/{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"最近更新\",\"url\":\"https://m.po18yu.com/ranks/lastupdate/{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"本站推荐\",\"url\":\"https://m.po18yu.com/ranks/toptime/{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"全本小说\",\"url\":\"https://m.po18yu.com/quanben.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"书  库\",\"url\":\"\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":1}},\n{\"title\":\"都 市\",\"url\":\"https://m.po18yu.com/category/1_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"浓 情\",\"url\":\"https://m.po18yu.com/category/2_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"言 情\",\"url\":\"https://m.po18yu.com/category/3_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"校 园\",\"url\":\"https://m.po18yu.com/category/4_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"武 侠\",\"url\":\"https://m.po18yu.com/category/5_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"玄 幻\",\"url\":\"https://m.po18yu.com/category/6_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"穿 越\",\"url\":\"https://m.po18yu.com/category/7_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"惊 悚\",\"url\":\"https://m.po18yu.com/category/8_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"悬 疑\",\"url\":\"https://m.po18yu.com/category/9_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"重 生\",\"url\":\"https://m.po18yu.com/category/10_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"历 史\",\"url\":\"https://m.po18yu.com/category/11_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"其 他\",\"url\":\"https://m.po18yu.com/category/12_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}}]",
+    "lastUpdateTime": 1681058433636,
+    "respondTime": 5548,
+    "ruleBookInfo": {
+      "init": "",
+      "intro": "class.h3_rf creat_time@text&&class.book_desc@html@js:result.replace(/^/,'    ')",
+      "kind": "class.qtxx@tag.p.1@text&&class.state@text##类别：|中",
+      "lastChapter": "class.h3_rf new_time.0@text&&class.h3_rf creat_time@text##更新时间：\n<js>result.replace(/(.*)\\s/,'$1 • ')</js>",
+      "tocUrl": "text.更多章节@href",
+      "wordCount": "class.qtxx@tag.p.2@text##总字数："
+    },
+    "ruleContent": {
+      "content": "id.rd-txt@html",
+      "nextContentUrl": "text.下一页@href",
+      "replaceRegex": "##\\s*>>本章未完.*继续阅读\\s*"
+    },
+    "ruleExplore": {
+      "author": "class.book-author@text",
+      "bookList": "class.book-li",
+      "bookUrl": "a@href",
+      "coverUrl": "@js:'https://m.kanshujun.com/style/noimg.jpg'",
+      "intro": "class.book-intro@html",
+      "kind": "class.sk_b_span@text&&tag.i@text##\\s\\|\\s(连载|全本)",
+      "name": "class.book-title@text##_.*",
+      "wordCount": "class.tag-small blue@text"
+    },
+    "ruleReview": {},
+    "ruleSearch": {
+      "author": "class.book-author@text||class.aut@text",
+      "bookList": "class.book-li||class.book_inf",
+      "bookUrl": "a@href",
+      "coverUrl": "@js:'https://m.kanshujun.com/style/noimg.jpg'",
+      "intro": "",
+      "kind": "class.sk_b_span@text&&tag.i@text##\\s\\|\\s(连载|全本)",
+      "name": "class.book-title@text||h3@text",
+      "wordCount": "class.tag-small blue@text||class.qtxx@tag.p.2@text##总字数："
+    },
+    "ruleToc": {
+      "chapterList": "class.mulu_uld@tag.li",
+      "chapterName": "tag.a@text##>|Po18tV.CoM",
+      "chapterUrl": "tag.a@href"
+    },
+    "searchUrl": "https://m.po18yu.com/modules/article/search.php?searchkey={{key}}&submit=%CC%E1%BD%BB,{\"charset\":\"gbk\"}",
     "weight": 0
   },
   {
