@@ -1333,6 +1333,55 @@
     "weight": 0
   },
   {
+    "bookSourceComment": "",
+    "bookSourceGroup": "🔞",
+    "bookSourceName": "☘️🔞BL书阁🔞☘️",
+    "bookSourceType": 0,
+    "bookSourceUrl": "https://www.blshuge.com#响海",
+    "customOrder": 553,
+    "enabled": true,
+    "enabledCookieJar": false,
+    "enabledExplore": true,
+    "exploreUrl": "玄幻::https://www.blshuge.com/sort/1/{{page}}.html\n穿越::https://www.blshuge.com/sort/2/{{page}}.html\n架空::https://www.blshuge.com/sort/3/{{page}}.html\n都市::https://www.blshuge.com/sort/4/{{page}}.html\n言情::https://www.blshuge.com/sort/5/{{page}}.html\n网游::https://www.blshuge.com/sort/6/{{page}}.html\n科幻::https://www.blshuge.com/sort/7/{{page}}.html\n精品::https://www.blshuge.com/sort/8/{{page}}.html\n耽美::https://www.blshuge.com/sort/9/{{page}}.html",
+    "lastUpdateTime": 1694170776917,
+    "respondTime": 7188,
+    "ruleBookInfo": {
+      "author": "class.p_author@text",
+      "coverUrl": "tag.img@src",
+      "intro": "id.bookintro@text",
+      "lastChapter": "id.uptime@tag.span@text",
+      "name": "class.d_title@tag.h1@text",
+      "tocUrl": "text.更多目录@href"
+    },
+    "ruleContent": {
+      "content": "id.TextContent@html"
+    },
+    "ruleExplore": {
+      "bookList": "id.sitebox@tag.dl",
+      "bookUrl": "tag.h3@tag.a@href",
+      "coverUrl": "tag.img@_src",
+      "intro": "class.book_des@text",
+      "kind": "tag.dt@tag.span@text",
+      "name": "tag.h3@tag.a@text"
+    },
+    "ruleReview": {},
+    "ruleSearch": {
+      "bookList": "id.nr",
+      "bookUrl": "tag.h3@tag.a@href",
+      "coverUrl": "tag.img@src",
+      "intro": "class.book_des@text",
+      "kind": "tag.span.0@text",
+      "name": "tag.h3@tag.a.-1@text"
+    },
+    "ruleToc": {
+      "chapterList": "class.chaw_c@tag.li",
+      "chapterName": "tag.a@text",
+      "chapterUrl": "tag.a@href"
+    },
+    "searchUrl": "https://www.blshuge.com/modules/article/search.php,{\n\"method\": \"POST\",\n\"body\": \"searchkey={{key}}\"\n}",
+    "weight": 0
+  },
+  {
     "bookSourceComment": "挂代理",
     "bookSourceGroup": "校验可用",
     "bookSourceName": "💯爱下书小说网",
