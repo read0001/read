@@ -983,61 +983,6 @@
   {
     "bookSourceComment": "",
     "bookSourceGroup": "校验可用",
-    "bookSourceName": "👔 日居月诸",
-    "bookSourceType": 0,
-    "bookSourceUrl": "https://m.po18yu.com",
-    "customOrder": 448,
-    "enabled": true,
-    "enabledCookieJar": false,
-    "enabledExplore": true,
-    "exploreUrl": "[{\"title\":\"排  行\",\"url\":\"\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":1}},\n{\"title\":\"总推荐榜\",\"url\":\"https://m.po18yu.com/ranks/allvote/{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"总收藏榜\",\"url\":\"https://m.po18yu.com/ranks/goodnum/{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"总点击榜\",\"url\":\"https://m.po18yu.com/ranks/allvisit/{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"月点击榜\",\"url\":\"https://m.po18yu.com/ranks/monthvisit/{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"周点击榜\",\"url\":\"https://m.po18yu.com/ranks/weekvisit/{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"最新入库\",\"url\":\"https://m.po18yu.com/ranks/postdate/{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"最近更新\",\"url\":\"https://m.po18yu.com/ranks/lastupdate/{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"本站推荐\",\"url\":\"https://m.po18yu.com/ranks/toptime/{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"全本小说\",\"url\":\"https://m.po18yu.com/quanben.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"书  库\",\"url\":\"\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":1}},\n{\"title\":\"都 市\",\"url\":\"https://m.po18yu.com/category/1_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"浓 情\",\"url\":\"https://m.po18yu.com/category/2_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"言 情\",\"url\":\"https://m.po18yu.com/category/3_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"校 园\",\"url\":\"https://m.po18yu.com/category/4_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"武 侠\",\"url\":\"https://m.po18yu.com/category/5_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"玄 幻\",\"url\":\"https://m.po18yu.com/category/6_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"穿 越\",\"url\":\"https://m.po18yu.com/category/7_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"惊 悚\",\"url\":\"https://m.po18yu.com/category/8_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"悬 疑\",\"url\":\"https://m.po18yu.com/category/9_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"重 生\",\"url\":\"https://m.po18yu.com/category/10_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"历 史\",\"url\":\"https://m.po18yu.com/category/11_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}},\n{\"title\":\"其 他\",\"url\":\"https://m.po18yu.com/category/12_0_0_0_goodnum_{{page}}.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.25}}]",
-    "lastUpdateTime": 1681058433636,
-    "respondTime": 5548,
-    "ruleBookInfo": {
-      "init": "",
-      "intro": "class.h3_rf creat_time@text&&class.book_desc@html@js:result.replace(/^/,'    ')",
-      "kind": "class.qtxx@tag.p.1@text&&class.state@text##类别：|中",
-      "lastChapter": "class.h3_rf new_time.0@text&&class.h3_rf creat_time@text##更新时间：\n<js>result.replace(/(.*)\\s/,'$1 • ')</js>",
-      "tocUrl": "text.更多章节@href",
-      "wordCount": "class.qtxx@tag.p.2@text##总字数："
-    },
-    "ruleContent": {
-      "content": "id.rd-txt@html",
-      "nextContentUrl": "text.下一页@href",
-      "replaceRegex": "##\\s*>>本章未完.*继续阅读\\s*"
-    },
-    "ruleExplore": {
-      "author": "class.book-author@text",
-      "bookList": "class.book-li",
-      "bookUrl": "a@href",
-      "coverUrl": "@js:'https://m.kanshujun.com/style/noimg.jpg'",
-      "intro": "class.book-intro@html",
-      "kind": "class.sk_b_span@text&&tag.i@text##\\s\\|\\s(连载|全本)",
-      "name": "class.book-title@text##_.*",
-      "wordCount": "class.tag-small blue@text"
-    },
-    "ruleReview": {},
-    "ruleSearch": {
-      "author": "class.book-author@text||class.aut@text",
-      "bookList": "class.book-li||class.book_inf",
-      "bookUrl": "a@href",
-      "coverUrl": "@js:'https://m.kanshujun.com/style/noimg.jpg'",
-      "intro": "",
-      "kind": "class.sk_b_span@text&&tag.i@text##\\s\\|\\s(连载|全本)",
-      "name": "class.book-title@text||h3@text",
-      "wordCount": "class.tag-small blue@text||class.qtxx@tag.p.2@text##总字数："
-    },
-    "ruleToc": {
-      "chapterList": "class.mulu_uld@tag.li",
-      "chapterName": "tag.a@text##>|Po18tV.CoM",
-      "chapterUrl": "tag.a@href"
-    },
-    "searchUrl": "https://m.po18yu.com/modules/article/search.php?searchkey={{key}}&submit=%CC%E1%BD%BB,{\"charset\":\"gbk\"}",
-    "weight": 0
-  },
-  {
-    "bookSourceComment": "",
-    "bookSourceGroup": "校验可用",
     "bookSourceName": "👔 佩蒲斐榕",
     "bookSourceType": 0,
     "bookSourceUrl": "https://m.popofree.com",
