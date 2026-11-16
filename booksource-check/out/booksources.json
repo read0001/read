@@ -1437,55 +1437,6 @@
     "weight": 0
   },
   {
-    "bookSourceComment": "",
-    "bookSourceGroup": "🔞",
-    "bookSourceName": "☘️🔞BL书阁🔞☘️",
-    "bookSourceType": 0,
-    "bookSourceUrl": "https://www.blshuge.com#响海",
-    "customOrder": 553,
-    "enabled": true,
-    "enabledCookieJar": false,
-    "enabledExplore": true,
-    "exploreUrl": "玄幻::https://www.blshuge.com/sort/1/{{page}}.html\n穿越::https://www.blshuge.com/sort/2/{{page}}.html\n架空::https://www.blshuge.com/sort/3/{{page}}.html\n都市::https://www.blshuge.com/sort/4/{{page}}.html\n言情::https://www.blshuge.com/sort/5/{{page}}.html\n网游::https://www.blshuge.com/sort/6/{{page}}.html\n科幻::https://www.blshuge.com/sort/7/{{page}}.html\n精品::https://www.blshuge.com/sort/8/{{page}}.html\n耽美::https://www.blshuge.com/sort/9/{{page}}.html",
-    "lastUpdateTime": 1694170776917,
-    "respondTime": 7188,
-    "ruleBookInfo": {
-      "author": "class.p_author@text",
-      "coverUrl": "tag.img@src",
-      "intro": "id.bookintro@text",
-      "lastChapter": "id.uptime@tag.span@text",
-      "name": "class.d_title@tag.h1@text",
-      "tocUrl": "text.更多目录@href"
-    },
-    "ruleContent": {
-      "content": "id.TextContent@html"
-    },
-    "ruleExplore": {
-      "bookList": "id.sitebox@tag.dl",
-      "bookUrl": "tag.h3@tag.a@href",
-      "coverUrl": "tag.img@_src",
-      "intro": "class.book_des@text",
-      "kind": "tag.dt@tag.span@text",
-      "name": "tag.h3@tag.a@text"
-    },
-    "ruleReview": {},
-    "ruleSearch": {
-      "bookList": "id.nr",
-      "bookUrl": "tag.h3@tag.a@href",
-      "coverUrl": "tag.img@src",
-      "intro": "class.book_des@text",
-      "kind": "tag.span.0@text",
-      "name": "tag.h3@tag.a.-1@text"
-    },
-    "ruleToc": {
-      "chapterList": "class.chaw_c@tag.li",
-      "chapterName": "tag.a@text",
-      "chapterUrl": "tag.a@href"
-    },
-    "searchUrl": "https://www.blshuge.com/modules/article/search.php,{\n\"method\": \"POST\",\n\"body\": \"searchkey={{key}}\"\n}",
-    "weight": 0
-  },
-  {
     "bookSourceComment": "挂代理",
     "bookSourceGroup": "校验可用",
     "bookSourceName": "💯爱下书小说网",
@@ -2386,6 +2337,60 @@
       "chapterUrl": "tag.a@href"
     },
     "searchUrl": "http://www.xinbqg.com/modules/article/search.php?s=0000&q={{key}}",
+    "weight": 0
+  },
+  {
+    "bookSourceComment": "如果加载详细信息，书源反应超级慢(系菜鸟，技术有限)\n所以使用体验参差不齐😂\n建议使用前十个发现找书(信息会多一点，有封面)",
+    "bookSourceGroup": "校验可用",
+    "bookSourceName": "御书屋",
+    "bookSourceType": 0,
+    "bookSourceUrl": "https://m.po18xs.com",
+    "customOrder": 929,
+    "enabled": true,
+    "enabledCookieJar": false,
+    "enabledExplore": true,
+    "exploreUrl": "[{\"title\":\"玄幻奇幻\",\"url\":\"https://m.po18xs.com/sort/1_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"武侠仙侠\",\"url\":\"https://m.po18xs.com/sort/2_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"都市言情\",\"url\":\"https://m.po18xs.com/sort/3_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"科幻网游\",\"url\":\"https://m.po18xs.com/sort/4_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"惊悚悬疑\",\"url\":\"https://m.po18xs.com/sort/5_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"耽美同人\",\"url\":\"https://m.po18xs.com/sort/6_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"穿越架空\",\"url\":\"https://m.po18xs.com/sort/7_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"高辣浓情\",\"url\":\"https://m.po18xs.com/sort/8_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"禁忌百合\",\"url\":\"https://m.po18xs.com/sort/9_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"精品文学\",\"url\":\"https://m.po18xs.com/sort/10_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"完本小说\",\"url\":\"https://m.po18xs.com/full/{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"日点击榜\",\"url\":\"https://m.po18xs.com/top/dayvisit_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"周点击榜\",\"url\":\"https://m.po18xs.com/top/weekvisit_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"月点击榜\",\"url\":\"https://m.po18xs.com/top/monthvisit_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"总点击榜\",\"url\":\"https://m.po18xs.com/top/allvisit_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"总收藏榜\",\"url\":\"https://m.po18xs.com/top/goodnum_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"字数排行\",\"url\":\"https://m.po18xs.com/top/size_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"日推荐榜\",\"url\":\"https://m.po18xs.com/top/dayvote_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"周推荐榜\",\"url\":\"https://m.po18xs.com/top/weekvote_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"月推荐榜\",\"url\":\"https://m.po18xs.com/top/monthvote_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"总推荐榜\",\"url\":\"https://m.po18xs.com/top/allvote_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"最新入库\",\"url\":\"https://m.po18xs.com/top/postdate_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"最近更新\",\"url\":\"https://m.po18xs.com/top/lastupdate_{{page}}/\",\"style\":{\"layout_flexGrow\":1}}]",
+    "lastUpdateTime": 1632577300901,
+    "respondTime": 6970,
+    "ruleBookInfo": {
+      "author": ".infotype@p.0@a@text",
+      "coverUrl": ".pic@img@src",
+      "intro": ".intro@p@text",
+      "kind": ".infotype@p.1@text##类型：",
+      "lastChapter": "{{@.infotype@p.3@text}}▪️{{@.infotype@p.2@text}}##最新章节：|更新时间：20",
+      "name": "h3@text",
+      "tocUrl": "text.章节目录@href"
+    },
+    "ruleContent": {
+      "content": "#novelcontent@p.0@html"
+    },
+    "ruleExplore": {
+      "author": ".author@text||.p3@text",
+      "bookList": ".article||.full_content||.articlegeneral",
+      "bookUrl": "a.0@href",
+      "coverUrl": "img@src",
+      "intro": ".simple@text",
+      "kind": ".p1@text##\\[|\\]",
+      "lastChapter": "",
+      "name": "h6@text||.p2@a@text"
+    },
+    "ruleSearch": {
+      "author": "span@text",
+      "bookList": ".sone",
+      "bookUrl": "a.0@href",
+      "coverUrl": "",
+      "intro": "",
+      "kind": "",
+      "lastChapter": "",
+      "name": "a.0@text"
+    },
+    "ruleToc": {
+      "chapterList": ".chapters@li",
+      "chapterName": "a@text",
+      "chapterUrl": "a@href",
+      "nextTocUrl": "text.下一页@href"
+    },
+    "searchUrl": "https://m.po18xs.com/s.php,{\n'charset': 'gbk',\n'method': 'POST',\n'body': 's={{key}}&type=articlename'\n}",
     "weight": 0
   },
   {
