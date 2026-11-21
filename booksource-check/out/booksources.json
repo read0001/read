@@ -1748,47 +1748,33 @@
   },
   {
     "bookSourceComment": "",
-    "bookSourceGroup": "🔞",
-    "bookSourceName": "🔞 米读小说②",
+    "bookSourceGroup": "校验可用",
+    "bookSourceName": "♛ 米读小说 #一程",
     "bookSourceType": 0,
-    "bookSourceUrl": "https://api.midukanshu.com",
+    "bookSourceUrl": "http://api.midukanshu.com#♤yc",
     "bookUrlPattern": "",
-    "customOrder": 691,
+    "customOrder": 705,
     "enabled": true,
     "enabledCookieJar": false,
     "enabledExplore": true,
     "exploreUrl": "",
-    "lastUpdateTime": 1681867782571,
+    "lastUpdateTime": 1637927576047,
     "loginUrl": "",
-    "respondTime": 572,
-    "ruleBookInfo": {
-      "init": "",
-      "lastChapter": "$.[-1].title"
-    },
+    "respondTime": 430,
+    "ruleBookInfo": {},
     "ruleContent": {
-      "content": "$..content##\\u0010|（未完待续）",
-      "replaceRegex": ""
+      "content": "$..content"
     },
-    "ruleExplore": {
-      "author": "",
-      "bookList": "",
-      "bookUrl": "",
-      "coverUrl": "",
-      "intro": "",
-      "kind": "",
-      "name": "",
-      "wordCount": ""
-    },
-    "ruleReview": {},
+    "ruleExplore": {},
     "ruleSearch": {
       "author": "$.author",
       "bookList": "$.data.*",
       "bookUrl": "$.book_id@js:\"https://book.midukanshu.com/book/chapter_list/100/\" + result + \".txt\"",
       "coverUrl": "$.cover",
-      "intro": "$.description",
-      "kind": "{$.score}分&&$..name&&$.category",
-      "lastChapter": "",
-      "name": "$.title##（+.*|.*最新章节|\\(+.*",
+      "intro": "$.description##(^|[。！？]+[”」）】]?)##$1<br>",
+      "kind": "$.category&&{$.score}分",
+      "lastChapter": "第{$.chapterNum}章",
+      "name": "$.title",
       "wordCount": "$.word_count"
     },
     "ruleToc": {
@@ -1798,7 +1784,7 @@
       "isVip": "",
       "updateTime": ""
     },
-    "searchUrl": "https://apiwz.midukanshu.com/fiction/search/search,{\n  \"method\": \"POST\",\n  \"body\": \"device=865166023475380&app=midu&keyword={{key}}&page={{page-1}}\"\n}",
+    "searchUrl": "/fiction/search/search,{\n  \"method\": \"POST\",\n  \"body\": \"device=865166023475380&app=midu&keyword={{key}}&page={{page}}\"\n}",
     "weight": 0
   },
   {
@@ -2580,61 +2566,6 @@
       "updateTime": ""
     },
     "searchUrl": "/modules/article/search.php,{\n  \"charset\": \"gbk\",\n  \"method\": \"POST\",\n  \"body\": \"searchkey={{key}}&page={{page}}\"\n}",
-    "weight": 0
-  },
-  {
-    "bookSourceComment": "",
-    "bookSourceGroup": "校验可用",
-    "bookSourceName": "米读看书[apiwz]",
-    "bookSourceType": 0,
-    "bookSourceUrl": "https://apiwz.midukanshu.com/",
-    "bookUrlPattern": "",
-    "customOrder": 1269,
-    "enabled": true,
-    "enabledCookieJar": false,
-    "enabledExplore": true,
-    "exploreUrl": "",
-    "lastUpdateTime": 1686040462876,
-    "loginUrl": "",
-    "respondTime": 562,
-    "ruleBookInfo": {
-      "init": "",
-      "lastChapter": "$.[-1].title"
-    },
-    "ruleContent": {
-      "content": "$..content##\\u0010|（未完待续）",
-      "replaceRegex": ""
-    },
-    "ruleExplore": {
-      "author": "",
-      "bookList": "",
-      "bookUrl": "",
-      "coverUrl": "",
-      "intro": "",
-      "kind": "",
-      "name": "",
-      "wordCount": ""
-    },
-    "ruleReview": {},
-    "ruleSearch": {
-      "author": "$.author",
-      "bookList": "$.data.*",
-      "bookUrl": "$.book_id@js:\"https://book.midukanshu.com/book/chapter_list/100/\" + result + \".txt\"",
-      "coverUrl": "$.cover",
-      "intro": "$.description",
-      "kind": "{$.score}分&&$..name&&$.category",
-      "lastChapter": "",
-      "name": "$.title##（+.*|.*最新章节|\\(+.*",
-      "wordCount": "$.word_count"
-    },
-    "ruleToc": {
-      "chapterList": "$.[*]",
-      "chapterName": "$.title",
-      "chapterUrl": "https://book.midukanshu.com/book/chapter/segment/master/{$.bookId}_{$.chapterId}.txt?md5={$.content_md5}",
-      "isVip": "",
-      "updateTime": ""
-    },
-    "searchUrl": "https://apiwz.midukanshu.com/fiction/search/search,{\n  \"method\": \"POST\",\n  \"body\": \"device=865166023475380&app=midu&keyword={{key}}&page={{page-1}}\"\n}",
     "weight": 0
   },
   {
@@ -5063,86 +4994,6 @@
     },
     "searchUrl": "search.php?keyWord={{key}}",
     "weight": 0
-  },
-  {
-    "bookSourceComment": "",
-    "bookSourceGroup": "",
-    "bookSourceName": "五六中文",
-    "bookSourceType": 0,
-    "bookSourceUrl": "https://www.56zw.com#",
-    "bookUrlPattern": "https://www.56zw.com/\\d+_\\d+/",
-    "concurrentRate": "",
-    "coverDecodeJs": "",
-    "customOrder": -133,
-    "enabled": true,
-    "enabledCookieJar": false,
-    "enabledExplore": true,
-    "exploreUrl": "全部小说::https://m.56zw.com/sort/0_{{page}}/\n玄幻奇幻::https://m.56zw.com/sort/1_{{page}}/\n武侠修真::https://m.56zw.com/sort/2_{{page}}/\n都市言情::https://m.56zw.com/sort/3_{{page}}/\n历史军事::https://m.56zw.com/sort/4_{{page}}/\n网游竞技::https://m.56zw.com/sort/5_{{page}}/\n科幻灵异::https://m.56zw.com/sort/6_{{page}}/\n其他类型::https://m.56zw.com/sort/7_{{page}}/",
-    "exploreScreen": "",
-    "header": "",
-    "lastUpdateTime": 1731434763097,
-    "loginCheckJs": "",
-    "loginUi": "",
-    "loginUrl": "{\n  \"url\": \"null\"\n}",
-    "respondTime": 540,
-    "ruleBookInfo": {
-      "init": "",
-      "author": "id.info@tag.p.0@text",
-      "coverUrl": "id.pic@img@src",
-      "intro": "id.intro@text",
-      "kind": "id.info@tag.p.2@text##更新时间：",
-      "lastChapter": "id.info@tag.p.3@a@text##免费章节 |正文卷 |正文 |VIP章节 |卷1",
-      "name": "id.info@h1@text",
-      "canReName": "",
-      "tocUrl": "",
-      "wordCount": "",
-      "ttsDice": ""
-    },
-    "ruleContent": {
-      "content": "id.content@html##顶点小说.*最新章节！|一秒記住.*提供精彩小说。",
-      "nextContentUrl": "",
-      "imageStyle": "",
-      "webJs": "",
-      "sourceRegex": "",
-      "replaceRegex": ""
-    },
-    "ruleExplore": {
-      "author": "class.author@text",
-      "bookList": "class.hot_sale",
-      "bookUrl": "tag.a.0@href@js:'https://www.56zw.com'+result",
-      "coverUrl": "img@data-original",
-      "intro": "class.review@text",
-      "kind": "",
-      "lastChapter": "",
-      "name": "class.title@text",
-      "wordCount": ""
-    },
-    "ruleReview": {
-      "review": ""
-    },
-    "ruleSearch": {
-      "author": "tag.td.2@text",
-      "bookList": "class.grid@id.nr",
-      "bookUrl": "tag.td.0@tag.a@href",
-      "coverUrl": "tag.td.0@tag.a@href<js>\nvar id = result.match(/(\\d+)\\/?$/)[1];\nvar iid = parseInt(id/1000);\n'https://www.56zw.com/files/article/image/'+iid+'/'+id+'/'+id+'s.jpg';\n</js>",
-      "intro": "",
-      "kind": "tag.td.4@text",
-      "lastChapter": "tag.td.1@tag.a@text##免费章节 |正文卷 |正文 |VIP章节 |卷1",
-      "name": "tag.td.0@tag.a@text",
-      "wordCount": "tag.td.3@text"
-    },
-    "ruleToc": {
-      "chapterList": "id.list@tag.dd",
-      "chapterName": "tag.a@text",
-      "chapterUrl": "tag.a@href",
-      "isVip": "",
-      "isVolume": "",
-      "nextTocUrl": "",
-      "updateTime": ""
-    },
-    "searchUrl": "https://www.56zw.com/modules/article/search.php?searchkey={{key}}&searchtype=articlename&page={{page}},{\n  \"charset\": \"gbk\"\n}",
-    "variableComment": "",
-    "weight": 1
   },
   {
     "bookSourceComment": "",
@@ -11825,84 +11676,6 @@
     }
   },
   {
-    "bookSourceComment": "",
-    "bookSourceGroup": "用户收藏",
-    "bookSourceName": "五六中万",
-    "bookSourceType": 0,
-    "bookSourceUrl": "https://www.zw.com/♤pb",
-    "bookUrlPattern": "https://www.56zw.com/\\d+_\\d+/",
-    "concurrentRate": "",
-    "coverDecodeJs": "",
-    "customButton": false,
-    "customOrder": 256,
-    "enabled": true,
-    "enabledCookieJar": false,
-    "enabledExplore": true,
-    "eventListener": false,
-    "exploreScreen": "",
-    "exploreUrl": "全部小说::https://m.56zw.com/sort/0_{{page}}/\n玄幻奇幻::https://m.56zw.com/sort/1_{{page}}/\n武侠修真::https://m.56zw.com/sort/2_{{page}}/\n都市言情::https://m.56zw.com/sort/3_{{page}}/\n历史军事::https://m.56zw.com/sort/4_{{page}}/\n网游竞技::https://m.56zw.com/sort/5_{{page}}/\n科幻灵异::https://m.56zw.com/sort/6_{{page}}/\n其他类型::https://m.56zw.com/sort/7_{{page}}/",
-    "header": "",
-    "lastUpdateTime": 1733140312549,
-    "loginCheckJs": "",
-    "loginUi": "",
-    "loginUrl": "",
-    "respondTime": 6297,
-    "ruleBookInfo": {
-      "author": "id.info@tag.p.0@text",
-      "canReName": "",
-      "coverUrl": "id.pic@img@src",
-      "init": "",
-      "intro": "id.intro@text",
-      "kind": "id.info@tag.p.2@text##更新时间：",
-      "lastChapter": "id.info@tag.p.3@a@text##免费章节 |正文卷 |正文 |VIP章节 |卷1",
-      "name": "id.info@h1@text",
-      "tocUrl": "",
-      "wordCount": ""
-    },
-    "ruleContent": {
-      "content": "id.content@html##顶点小说.*最新章节！|一秒記住.*提供精彩小说。",
-      "imageStyle": "",
-      "nextContentUrl": "",
-      "replaceRegex": "",
-      "sourceRegex": "",
-      "webJs": ""
-    },
-    "ruleExplore": {
-      "author": "class.author@text",
-      "bookList": "class.hot_sale",
-      "bookUrl": "tag.a.0@href@js:'https://www.56zw.com'+result",
-      "coverUrl": "img@data-original",
-      "intro": "class.review@text",
-      "kind": "",
-      "lastChapter": "",
-      "name": "class.title@text",
-      "wordCount": ""
-    },
-    "ruleSearch": {
-      "author": "tag.td.2@text",
-      "bookList": "class.grid@id.nr",
-      "bookUrl": "tag.td.0@tag.a@href",
-      "coverUrl": "tag.td.0@tag.a@href<js>\nvar id = result.match(/(\\d+)\\/?$/)[1];\nvar iid = parseInt(id/1000);\n'https://www.56zw.com/files/article/image/'+iid+'/'+id+'/'+id+'s.jpg';\n</js>",
-      "intro": "",
-      "kind": "tag.td.4@text",
-      "lastChapter": "tag.td.1@tag.a@text##免费章节 |正文卷 |正文 |VIP章节 |卷1",
-      "name": "tag.td.0@tag.a@text",
-      "wordCount": "tag.td.3@text"
-    },
-    "ruleToc": {
-      "chapterList": "id.list@tag.dd",
-      "chapterName": "tag.a@text",
-      "chapterUrl": "tag.a@href",
-      "isVip": "",
-      "isVolume": "",
-      "nextTocUrl": "",
-      "updateTime": ""
-    },
-    "searchUrl": "https://www.56zw.com/modules/article/search.php?searchkey={{key}}&searchtype=articlename&page={{page}},{\n  \"charset\": \"gbk\"\n}",
-    "variableComment": "",
-    "weight": 1
-  },
-  {
     "bookSourceUrl": "http://www.ddsk.org#🎃",
     "bookSourceName": "大帝书阁🎃#2",
     "bookSourceGroup": "小说",
@@ -12553,60 +12326,6 @@
     },
     "searchUrl": "@js:'/search/' + java.encodeURI('' + key)",
     "weight": 0
-  },
-  {
-    "bookSourceUrl": "https://www.56zw.com已整理",
-    "bookSourceName": "五六中文",
-    "bookSourceGroup": "-------",
-    "bookUrlPattern": "https://www.56zw.com/\\d+_\\d+已校验",
-    "loginUrl": "{\n  \"url\": \"null\"\n}",
-    "bookSourceComment": "",
-    "exploreUrl": "全部小说::https://m.56zw.com/sort/0_{{page}}/\n玄幻奇幻::https://m.56zw.com/sort/1_{{page}}/\n武侠修真::https://m.56zw.com/sort/2_{{page}}/\n都市言情::https://m.56zw.com/sort/3_{{page}}/\n历史军事::https://m.56zw.com/sort/4_{{page}}/\n网游竞技::https://m.56zw.com/sort/5_{{page}}/\n科幻灵异::https://m.56zw.com/sort/6_{{page}}/\n其他类型::https://m.56zw.com/sort/7_{{page}}/",
-    "searchUrl": "https://www.56zw.com/modules/article/search.php?searchkey={{key}}&searchtype=articlename&page={{page}},{\n  \"charset\": \"gbk\"\n}",
-    "bookSourceType": 0,
-    "customOrder": 7712,
-    "lastUpdateTime": 1729255190703,
-    "respondTime": 2369,
-    "weight": 0,
-    "enabled": true,
-    "enabledExplore": true,
-    "enabledCookieJar": false,
-    "ruleSearch": {
-      "author": "tag.td.2@text",
-      "bookList": "class.grid@id.nr",
-      "bookUrl": "tag.td.0@tag.a@href",
-      "coverUrl": "tag.td.0@tag.a@href<js>\nvar id = result.match(/(\\d+)\\/?$/)[1];\nvar iid = parseInt(id/1000);\n'https://www.56zw.com/files/article/image/'+iid+'/'+id+'/'+id+'s.jpg';\n</js>",
-      "kind": "tag.td.4@text",
-      "lastChapter": "tag.td.1@tag.a@text##免费章节 |正文卷 |正文 |VIP章节 |卷1",
-      "name": "tag.td.0@tag.a@text",
-      "wordCount": "tag.td.3@text"
-    },
-    "ruleExplore": {
-      "author": "class.author@text",
-      "bookList": "class.hot_sale",
-      "bookUrl": "tag.a.0@href@js:'https://www.56zw.com'+result",
-      "coverUrl": "img@data-original",
-      "intro": "class.review@text",
-      "name": "class.title@text"
-    },
-    "ruleBookInfo": {
-      "author": "id.info@tag.p.0@text",
-      "coverUrl": "id.pic@img@src",
-      "init": "",
-      "intro": "id.intro@text",
-      "kind": "id.info@tag.p.2@text##更新时间：",
-      "lastChapter": "id.info@tag.p.3@a@text##免费章节 |正文卷 |正文 |VIP章节 |卷1",
-      "name": "id.info@h1@text",
-      "wordCount": ""
-    },
-    "ruleToc": {
-      "chapterList": "id.list@tag.dd",
-      "chapterName": "tag.a@text",
-      "chapterUrl": "tag.a@href"
-    },
-    "ruleContent": {
-      "content": "id.content@html##顶点小说.*最新章节！|一秒記住.*提供精彩小说。"
-    }
   },
   {
     "bookSourceUrl": "http://www.b5200.org",
