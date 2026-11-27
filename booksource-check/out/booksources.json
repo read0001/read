@@ -99,63 +99,6 @@
     "weight": 0
   },
   {
-    "bookSourceComment": "精准搜索",
-    "bookSourceGroup": "精品",
-    "bookSourceName": "笔趣阁③",
-    "bookSourceType": 0,
-    "bookSourceUrl": "https://www.biquge99.cc/",
-    "bookUrlPattern": "https://www.biquge99.cc/book/\\d+/",
-    "customOrder": -263,
-    "enabled": true,
-    "enabledCookieJar": false,
-    "enabledExplore": true,
-    "exploreUrl": "[{\"title\":\"玄幻小说\",\"url\":\"/xuanhuan/\",\"style\":{\"layout_flexGrow\":0.25}},{\"title\":\"武侠小说\",\"url\":\"/wuxia/\",\"style\":{\"layout_flexGrow\":0.25}},{\"title\":\"都市小说\",\"url\":\"/dushi/\",\"style\":{\"layout_flexGrow\":0.25}},{\"title\":\"历史小说\",\"url\":\"/lishi/\",\"style\":{\"layout_flexGrow\":0.25}},{\"title\":\"网游小说\",\"url\":\"/wangyou/\",\"style\":{\"layout_flexGrow\":0.25}},{\"title\":\"科幻小说\",\"url\":\"/kehuan/\",\"style\":{\"layout_flexGrow\":0.25}},{\"title\":\"女生小说\",\"url\":\"/mm/\",\"style\":{\"layout_flexGrow\":0,\"layout_flexBasisPercent\":0.29}}]",
-    "header": "{\n  \"User-Agent\": \"Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/47.0.2526.73 Safari/537.36\"\n}",
-    "lastUpdateTime": 1692661009662,
-    "loginUrl": "",
-    "respondTime": 16205,
-    "ruleBookInfo": {
-      "author": "class.info@class.small@tag.span.0@text##作者：",
-      "coverUrl": "class.cover@img@src",
-      "init": "",
-      "intro": "class.intro@text##简介：",
-      "kind": "class.info@class.small@tag.span.4@text&&\nclass.info@class.small@tag.span.2@text&&\nclass.info@class.small@tag.span.1@text##分类：|状态：|更新时间：",
-      "lastChapter": "class.info@class.small@tag.span.5@a@text##免费章节 |正文卷 |正文 |VIP章节 |百度搜索.*",
-      "name": "class.info@h1@text##\\（.*|\\(.*|免费阅读|全文.*阅读|最新章节|笔趣阁|小说"
-    },
-    "ruleContent": {
-      "content": "id.content@textNodes##请记住本书.*cc"
-    },
-    "ruleExplore": {
-      "author": "class.s4@text",
-      "bookList": "class.l@li",
-      "bookUrl": "class.s2@a@href",
-      "coverUrl": "class.s2@a@href<js>\nvar id = result.match(/(\\d+)\\/?$/)[1];\n'https://www.biquge99.cc/bookimages/'+id+'.jpg';\n</js>",
-      "kind": "class.s5@text",
-      "lastChapter": "class.s3@a@text",
-      "name": "class.s2@a@text"
-    },
-    "ruleReview": {},
-    "ruleSearch": {
-      "author": "class.author@text##作者：|<",
-      "bookList": "class.bookbox",
-      "bookUrl": "class.bookname@tag.a@href",
-      "checkKeyWord": "万族之劫",
-      "coverUrl": "class.bookimg@tag.img.0@src",
-      "intro": "class.bookinfo@p@text",
-      "kind": "class.cat@text##分类：",
-      "lastChapter": "class.update@tag.a@text##免费章节 |正文卷 |正文 |VIP章节 |百度搜索.*",
-      "name": "class.bookname@tag.a@text##\\（.*|\\(.*|免费阅读|全文.*阅读|最新章节|笔趣阁|小说"
-    },
-    "ruleToc": {
-      "chapterList": "class.listmain@tag.dd@tag.a",
-      "chapterName": "text",
-      "chapterUrl": "href"
-    },
-    "searchUrl": "https://www.biquge99.cc/s.php?ie=gbk&q={{key}}",
-    "weight": 0
-  },
-  {
     "bookSourceComment": "",
     "bookSourceGroup": "精品",
     "bookSourceName": "笔趣阁㉒",
@@ -499,53 +442,6 @@
       "nextTocUrl": "text.下一页@href"
     },
     "searchUrl": "https://wap.po18bl.com/modules/article/search.php,{\n\"charset\": \"utf-8\",\n\"method\": \"POST\",\n\"body\": \"searchkey={{key}}&searchtype=all\"\n}",
-    "weight": 0
-  },
-  {
-    "bookSourceComment": "",
-    "bookSourceGroup": "校验可用",
-    "bookSourceName": "🎉 顶点小说",
-    "bookSourceType": 0,
-    "bookSourceUrl": "https://www.ddyueshu.com",
-    "customOrder": 246,
-    "enabled": true,
-    "enabledCookieJar": true,
-    "enabledExplore": true,
-    "exploreUrl": "首页::https://www.ddyueshu.com/\n玄幻::https://www.ddyueshu.com/xuanhuanxiaoshuo/\n修真::https://www.ddyueshu.com/xiuzhenxiaoshuo/\n都市::https://www.ddyueshu.com/dushixiaoshuo/\n穿越::https://www.ddyueshu.com/chuanyuexiaoshuo/\n网游::https://www.ddyueshu.com/wangyouxiaoshuo/\n科幻::https://www.ddyueshu.com/kehuanxiaoshuo/\n全部::https://www.ddyueshu.com/xiaoshuodaquan/",
-    "lastUpdateTime": 1680512184065,
-    "respondTime": 4839,
-    "ruleBookInfo": {
-      "author": "id.info@tag.p.0@text",
-      "coverUrl": "id.fmimg@tag.img@src",
-      "init": "",
-      "intro": "id.intro@text",
-      "kind": "class.tag@class.blue@text",
-      "lastChapter": "class.update-text@text",
-      "name": "id.info@tag.h1@text",
-      "tocUrl": ""
-    },
-    "ruleContent": {
-      "content": "id.content@all##请记住本书首发域名：ddyueshu.com。顶点小说手机版阅读网址：m.ddyueshu.com",
-      "nextContentUrl": "class.bottem1@tag.a.2@href"
-    },
-    "ruleExplore": {
-      "bookList": "tag.li.!0:1:2:3:4:5:6:7:8:9",
-      "bookUrl": "tag.a@href",
-      "name": "tag.a@text"
-    },
-    "ruleSearch": {
-      "author": "",
-      "bookList": "tag.li.!0:1:2:3:4:5:6:7:8:9",
-      "bookUrl": "tag.a@href",
-      "checkKeyWord": "",
-      "name": "tag.a@text"
-    },
-    "ruleToc": {
-      "chapterList": "tag.dl@tag.dd.!0:1:2:3:4:5",
-      "chapterName": "tag.a@text",
-      "chapterUrl": "tag.a@href"
-    },
-    "searchUrl": "https://www.ddyueshu.com/xiaoshuodaquan/",
     "weight": 0
   },
   {
@@ -2327,60 +2223,6 @@
       "chapterUrl": "tag.a@href"
     },
     "searchUrl": "http://www.xinbqg.com/modules/article/search.php?s=0000&q={{key}}",
-    "weight": 0
-  },
-  {
-    "bookSourceComment": "如果加载详细信息，书源反应超级慢(系菜鸟，技术有限)\n所以使用体验参差不齐😂\n建议使用前十个发现找书(信息会多一点，有封面)",
-    "bookSourceGroup": "校验可用",
-    "bookSourceName": "御书屋",
-    "bookSourceType": 0,
-    "bookSourceUrl": "https://m.po18xs.com",
-    "customOrder": 929,
-    "enabled": true,
-    "enabledCookieJar": false,
-    "enabledExplore": true,
-    "exploreUrl": "[{\"title\":\"玄幻奇幻\",\"url\":\"https://m.po18xs.com/sort/1_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"武侠仙侠\",\"url\":\"https://m.po18xs.com/sort/2_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"都市言情\",\"url\":\"https://m.po18xs.com/sort/3_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"科幻网游\",\"url\":\"https://m.po18xs.com/sort/4_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"惊悚悬疑\",\"url\":\"https://m.po18xs.com/sort/5_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"耽美同人\",\"url\":\"https://m.po18xs.com/sort/6_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"穿越架空\",\"url\":\"https://m.po18xs.com/sort/7_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"高辣浓情\",\"url\":\"https://m.po18xs.com/sort/8_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"禁忌百合\",\"url\":\"https://m.po18xs.com/sort/9_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"精品文学\",\"url\":\"https://m.po18xs.com/sort/10_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"完本小说\",\"url\":\"https://m.po18xs.com/full/{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"日点击榜\",\"url\":\"https://m.po18xs.com/top/dayvisit_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"周点击榜\",\"url\":\"https://m.po18xs.com/top/weekvisit_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"月点击榜\",\"url\":\"https://m.po18xs.com/top/monthvisit_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"总点击榜\",\"url\":\"https://m.po18xs.com/top/allvisit_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"总收藏榜\",\"url\":\"https://m.po18xs.com/top/goodnum_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"字数排行\",\"url\":\"https://m.po18xs.com/top/size_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"日推荐榜\",\"url\":\"https://m.po18xs.com/top/dayvote_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"周推荐榜\",\"url\":\"https://m.po18xs.com/top/weekvote_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"月推荐榜\",\"url\":\"https://m.po18xs.com/top/monthvote_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"总推荐榜\",\"url\":\"https://m.po18xs.com/top/allvote_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"最新入库\",\"url\":\"https://m.po18xs.com/top/postdate_{{page}}/\",\"style\":{\"layout_flexGrow\":1}},{\"title\":\"最近更新\",\"url\":\"https://m.po18xs.com/top/lastupdate_{{page}}/\",\"style\":{\"layout_flexGrow\":1}}]",
-    "lastUpdateTime": 1632577300901,
-    "respondTime": 6970,
-    "ruleBookInfo": {
-      "author": ".infotype@p.0@a@text",
-      "coverUrl": ".pic@img@src",
-      "intro": ".intro@p@text",
-      "kind": ".infotype@p.1@text##类型：",
-      "lastChapter": "{{@.infotype@p.3@text}}▪️{{@.infotype@p.2@text}}##最新章节：|更新时间：20",
-      "name": "h3@text",
-      "tocUrl": "text.章节目录@href"
-    },
-    "ruleContent": {
-      "content": "#novelcontent@p.0@html"
-    },
-    "ruleExplore": {
-      "author": ".author@text||.p3@text",
-      "bookList": ".article||.full_content||.articlegeneral",
-      "bookUrl": "a.0@href",
-      "coverUrl": "img@src",
-      "intro": ".simple@text",
-      "kind": ".p1@text##\\[|\\]",
-      "lastChapter": "",
-      "name": "h6@text||.p2@a@text"
-    },
-    "ruleSearch": {
-      "author": "span@text",
-      "bookList": ".sone",
-      "bookUrl": "a.0@href",
-      "coverUrl": "",
-      "intro": "",
-      "kind": "",
-      "lastChapter": "",
-      "name": "a.0@text"
-    },
-    "ruleToc": {
-      "chapterList": ".chapters@li",
-      "chapterName": "a@text",
-      "chapterUrl": "a@href",
-      "nextTocUrl": "text.下一页@href"
-    },
-    "searchUrl": "https://m.po18xs.com/s.php,{\n'charset': 'gbk',\n'method': 'POST',\n'body': 's={{key}}&type=articlename'\n}",
     "weight": 0
   },
   {
